@@ -42,7 +42,7 @@ public:
 	void drawFrame();
 
 	short addSprite(float posX, float posY, SpriteLayers layer, float sizeX, float sizeY, float rotation,
-		 vk::Sampler sampler, Texture* texture, GraphicsComponent* object);	//returns index of sprite in pool
+		vk::Sampler sampler, Texture* texture, GraphicsComponent* object);	//returns index of sprite in pool
 	void removeSprite(unsigned short index);
 
 	vk::ImageView createImageView(vk::Image image, vk::Format format,
@@ -72,7 +72,7 @@ public:
 	vk::Queue graphicsQueue;
 
 	vk::Sampler textureSampler;
-	std::array<Texture, MAX_TEXTURES> textures;
+	std::array<Texture, Settings::MAX_TEXTURES> textures;
 
 	std::unique_ptr<SpritePool> spritesToRender;
 
@@ -104,7 +104,7 @@ private:
 	void createDescriptorPool();
 	void createCommandBuffers();
 	void createSyncObjects();
-	
+
 	void createSprites();
 	void updateSprites(uint32_t imageIndex);
 	void updateCommandBuffer(uint32_t imageIndex);

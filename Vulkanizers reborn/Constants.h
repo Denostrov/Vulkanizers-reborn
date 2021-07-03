@@ -4,6 +4,9 @@
 #include <vulkan/vulkan.hpp>
 #include <vector>
 #include <cassert>
+#include <any>
+#include <fstream>
+#include <iostream>
 #include <GLFW/glfw3.h>
 
 #ifdef NDEBUG
@@ -22,16 +25,22 @@ enum class SpriteLayers
 	eBackground, eGround, eAir, eGUI
 };
 
-constexpr int DEFAULT_WINDOW_WIDTH = 800;
-constexpr int DEFAULT_WINDOW_HEIGHT = 800;
-constexpr float DEFAULT_CURSOR_SIZE = 20.0f;
+enum class SettingTypes
+{
+	eUInt, eUShort, eFloat, eString
+};
 
-constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-constexpr short MAX_SPRITES = 512;
-constexpr short MAX_TEXTURES = 64;
-
-constexpr char const* const FRAG_SHADER_PATH = "shaders/frag.spv";
-constexpr char const* const VERT_SHADER_PATH = "shaders/vert.spv";
+struct Settings
+{
+	static unsigned int WINDOW_WIDTH;
+	static unsigned int WINDOW_HEIGHT;
+	static float CURSOR_SIZE;
+	static constexpr unsigned int MAX_FRAMES_IN_FLIGHT = 2;
+	static constexpr unsigned short MAX_SPRITES = 512;
+	static constexpr unsigned short MAX_TEXTURES = 64;
+	static std::string FRAG_SHADER_PATH;
+	static std::string VERT_SHADER_PATH;
+};
 
 const std::vector<char const*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
@@ -49,6 +58,10 @@ const std::vector<short> mappedKeys = {
 
 const std::vector<char> mappedMouseKeys = {
 	GLFW_MOUSE_BUTTON_LEFT
+};
+
+const std::vector<char const*> configSettingNames = {
+	"WINDOW_WIDTH", "WINDOW_HEIGHT", "CURSOR_SIZE", "MAX_FRAMES_IN_FLIGHT", "MAX_SPRITES", "MAX_TEXTURES", "FRAG_SHADER_PATH", "VERT_SHADER_PATH"
 };
 
 //returns underlying type of the enumerator
@@ -85,3 +98,7 @@ constexpr int convertYToRow(double y) noexcept
 {
 	return cfloor(y * 4.0 + 4.0);
 }
+
+std::any loadSetting(std::ifstream& file, std::string const& settingName, SettingTypes settingType);
+
+void loadConfig(std::string const& filename);

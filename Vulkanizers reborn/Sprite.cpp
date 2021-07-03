@@ -117,7 +117,7 @@ SpritePool::~SpritePool()
 short SpritePool::addSprite(float posX, float posY, SpriteLayers layer, float sizeX, float sizeY, float rotation,
 	vk::Sampler sampler, Texture* texture, GraphicsComponent* object)
 {
-	if (spriteCount == MAX_SPRITES)
+	if (spriteCount == Settings::MAX_SPRITES)
 	{
 		throw std::exception("exceeded sprite limit");
 	}

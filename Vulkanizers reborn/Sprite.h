@@ -75,6 +75,6 @@ private:
 
 	VulkanResources* vulkan;
 	short spriteCount;
-	std::array<Sprite, MAX_SPRITES> sprites;
-	std::array<unsigned char, MAX_SPRITES> frameCounts; //counts frames since sprite was removed
+	std::array<Sprite, Settings::MAX_SPRITES> sprites;
+	std::array<unsigned char, Settings::MAX_SPRITES> frameCounts; //counts frames since sprite was removed
 };

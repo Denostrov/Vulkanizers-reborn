@@ -52,7 +52,7 @@ namespace std
 }
 
 VulkanResources::VulkanResources(Game* game)
-	:vertShaderPath{ VERT_SHADER_PATH }, fragShaderPath{ FRAG_SHADER_PATH },
+	:vertShaderPath{ Settings::VERT_SHADER_PATH }, fragShaderPath{ Settings::FRAG_SHADER_PATH },
 	game{ game }
 {
 	initWindow();
@@ -79,13 +79,13 @@ VulkanResources::~VulkanResources()
 	device.freeMemory(vertexBufferMemory);
 	std::cout << "destroyed vertex buffer and freed memory\n";
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	for (size_t i = 0; i < Settings::MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		device.destroySemaphore(renderFinishedSemaphores[i]);
 		device.destroySemaphore(imageAvailableSemaphores[i]);
 		device.destroyFence(inFlightFences[i]);
 	}
-	std::cout << "destroyed " << MAX_FRAMES_IN_FLIGHT << " image available semaphores, render finished semaphores and in flight fences\n";
+	std::cout << "destroyed " << Settings::MAX_FRAMES_IN_FLIGHT << " image available semaphores, render finished semaphores and in flight fences\n";
 
 	device.destroyCommandPool(commandPool, nullptr);
 	std::cout << "destroyed command pool\n";
@@ -115,13 +115,15 @@ void VulkanResources::initWindow()
 {
 	glfwInit();
 
+	//do not create an opengl context
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	window = glfwCreateWindow(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, "Totris: Revengeance",
+	window = glfwCreateWindow(Settings::WINDOW_WIDTH, Settings::WINDOW_HEIGHT, "Vulkaners: Rebirth",
 		nullptr, nullptr);
 
 	glfwSetWindowUserPointer(window, this);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+
 	//sets bool in game that window was resized
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
@@ -712,22 +714,22 @@ void VulkanResources::createCommandBuffers()
 
 void VulkanResources::createSyncObjects()
 {
-	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+	imageAvailableSemaphores.resize(Settings::MAX_FRAMES_IN_FLIGHT);
+	renderFinishedSemaphores.resize(Settings::MAX_FRAMES_IN_FLIGHT);
+	inFlightFences.resize(Settings::MAX_FRAMES_IN_FLIGHT);
 	imagesInFlight.resize(swapChainImages.size(), nullptr);
 
 	vk::SemaphoreCreateInfo semaphoreInfo{};
 
 	vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlagBits::eSignaled);
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	for (size_t i = 0; i < Settings::MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		imageAvailableSemaphores[i] = device.createSemaphore(semaphoreInfo);
 		renderFinishedSemaphores[i] = device.createSemaphore(semaphoreInfo);
 		inFlightFences[i] = device.createFence(fenceInfo);
 	}
-	std::cout << "created " << MAX_FRAMES_IN_FLIGHT << " image available semaphores, render finished semaphores and in flight fences\n";
+	std::cout << "created " << Settings::MAX_FRAMES_IN_FLIGHT << " image available semaphores, render finished semaphores and in flight fences\n";
 }
 
 void VulkanResources::drawFrame()
@@ -801,7 +803,7 @@ void VulkanResources::drawFrame()
 		recreateSwapChain();
 	}
 
-	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	currentFrame = (currentFrame + 1) % Settings::MAX_FRAMES_IN_FLIGHT;
 }
 
 void VulkanResources::cleanupSwapChain()

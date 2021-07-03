@@ -6,6 +6,8 @@ int main()
 {
 	try
 	{
+		loadConfig("configs/config.txt");
+
 		Game game;
 		
 		game.start();

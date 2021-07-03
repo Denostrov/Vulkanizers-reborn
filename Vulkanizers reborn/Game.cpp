@@ -4,7 +4,7 @@
 Game::Game()
 	:lastFrameTime{ 0 }, deltaTime{ 0 }, fpsFramesRendered{ 0 }, fpsTimePassed{ 0.0f },
 	updateTime{ 0.0f }, gameOver{ false }, soundEngine{ std::make_unique<SoundEngine>() }, vulkan{ std::make_unique<VulkanResources>(this) },
-	cursor{ vulkan.get(), DEFAULT_CURSOR_SIZE }, random{}, gen{ random() }
+	cursor{ vulkan.get(), Settings::CURSOR_SIZE }, random{}, gen{ random() }
 {
 
 	//get window pointer from vulkan
