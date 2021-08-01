@@ -4,8 +4,10 @@ unsigned int Settings::WINDOW_WIDTH = 800;
 unsigned int Settings::WINDOW_HEIGHT = 800;
 float Settings::CURSOR_SIZE = 20.0f;
 
-std::string Settings::FRAG_SHADER_PATH = "shaders/frag.spv";
-std::string Settings::VERT_SHADER_PATH = "shaders/vert.spv";
+std::string Settings::SPRITE_FRAG_SHADER_PATH = "shaders/sprite_frag.spv";
+std::string Settings::SPRITE_VERT_SHADER_PATH = "shaders/sprite_vert.spv";
+std::string Settings::FRACTAL_FRAG_SHADER_PATH = "shaders/fractal_frag.spv";
+std::string Settings::FRACTAL_VERT_SHADER_PATH = "shaders/fractal_vert.spv";
 
 std::any loadSetting(std::ifstream& file, std::string const& settingName, SettingTypes settingType)
 {
@@ -73,6 +75,8 @@ void loadConfig(std::string const& filename)
 	Settings::WINDOW_WIDTH = std::any_cast<unsigned int>(loadSetting(file, "WINDOW_WIDTH", SettingTypes::eUInt));
 	Settings::WINDOW_HEIGHT = std::any_cast<unsigned int>(loadSetting(file, "WINDOW_HEIGHT", SettingTypes::eUInt));
 	Settings::CURSOR_SIZE = std::any_cast<float>(loadSetting(file, "CURSOR_SIZE", SettingTypes::eFloat));
-	Settings::FRAG_SHADER_PATH = std::any_cast<std::string>(loadSetting(file, "FRAG_SHADER_PATH", SettingTypes::eString));
-	Settings::VERT_SHADER_PATH = std::any_cast<std::string>(loadSetting(file, "VERT_SHADER_PATH", SettingTypes::eString));
+	Settings::SPRITE_FRAG_SHADER_PATH = std::any_cast<std::string>(loadSetting(file, "SPRITE_FRAG_SHADER_PATH", SettingTypes::eString));
+	Settings::SPRITE_VERT_SHADER_PATH = std::any_cast<std::string>(loadSetting(file, "SPRITE_VERT_SHADER_PATH", SettingTypes::eString));
+	Settings::FRACTAL_FRAG_SHADER_PATH = std::any_cast<std::string>(loadSetting(file, "FRACTAL_FRAG_SHADER_PATH", SettingTypes::eString));
+	Settings::FRACTAL_VERT_SHADER_PATH = std::any_cast<std::string>(loadSetting(file, "FRACTAL_VERT_SHADER_PATH", SettingTypes::eString));
 }

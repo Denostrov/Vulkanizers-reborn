@@ -28,6 +28,62 @@ class Game;
 struct Vertex;
 class GraphicsComponent;
 
+struct QueueFamilyIndices
+{
+	std::optional<uint32_t> graphicsFamily;
+	std::optional<uint32_t> presentFamily;
+
+	bool isComplete() const
+	{
+		return graphicsFamily.has_value() && presentFamily.has_value();
+	}
+};
+
+struct GraphicsPipelineData
+{
+	vk::DescriptorSetLayout descriptorSetLayout;
+	vk::PipelineLayout layout;
+	vk::Pipeline pipeline;
+};
+
+class ShaderModulePair
+{
+public:
+	ShaderModulePair();
+	ShaderModulePair(std::string const& vertFilename, std::string const& fragFilename, vk::Device device);
+	~ShaderModulePair();
+
+	ShaderModulePair(ShaderModulePair const&) = delete;
+	ShaderModulePair& operator=(ShaderModulePair const&) = delete;
+
+	ShaderModulePair(ShaderModulePair&& rhs) noexcept;
+	ShaderModulePair& operator=(ShaderModulePair&& rhs) noexcept;
+
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
+
+private:
+	void createShaderStages();
+
+	vk::ShaderModule vertShaderModule;
+	vk::ShaderModule fragShaderModule;
+	vk::Device device;
+};
+
+struct PipelineCreateData
+{
+	ShaderModulePair shaderModules;
+	vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+	vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+	vk::Viewport viewport;
+	vk::Rect2D scissor;
+	vk::PipelineViewportStateCreateInfo viewportState;
+	vk::PipelineRasterizationStateCreateInfo rasterizer;
+	vk::PipelineMultisampleStateCreateInfo multisampling;
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+	vk::PipelineColorBlendStateCreateInfo colorBlending;
+	vk::PipelineDepthStencilStateCreateInfo depthStencil;
+};
+
 static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 std::vector<char> readFile(std::string const& filename);
 
@@ -60,16 +116,14 @@ public:
 	GLFWwindow* window;
 	Game* game;
 
-	std::string vertShaderPath;
-	std::string fragShaderPath;
 	vk::PhysicalDevice physicalDevice;
 	vk::Device device;
 	std::vector<vk::Image> swapChainImages;
 	vk::Extent2D swapChainExtent;
-	vk::DescriptorSetLayout descriptorSetLayout;
 	vk::DescriptorPool descriptorPool;
 	vk::CommandPool commandPool;
 	vk::Queue graphicsQueue;
+	std::vector<GraphicsPipelineData> graphicsPipelinesData;
 
 	vk::Sampler textureSampler;
 	std::array<Texture, Settings::MAX_TEXTURES> textures;
@@ -91,8 +145,7 @@ private:
 	void cleanupSwapChain();
 	void createImageViews();
 	void createRenderPass();
-	void createDescriptorSetLayout();
-	void createGraphicsPipeline();
+	void createGraphicsPipelines();
 	void createCommandPool();
 	void createColorResources();
 	void createDepthResources();
@@ -112,6 +165,7 @@ private:
 	vk::DynamicLoader dynamicLoader;
 	vk::Instance instance;
 	vk::DebugUtilsMessengerEXT debugMessenger;
+	QueueFamilyIndices queueIndices;
 	vk::SurfaceKHR surface;
 	vk::Queue presentQueue;
 	vk::SwapchainKHR swapChain;
@@ -119,8 +173,6 @@ private:
 	std::vector<vk::ImageView> swapChainImageViews;
 	vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
 	vk::RenderPass renderPass;
-	vk::PipelineLayout pipelineLayout;
-	vk::Pipeline graphicsPipeline;
 	vk::Image colorImage;
 	vk::DeviceMemory colorImageMemory;
 	vk::ImageView colorImageView;
@@ -142,17 +194,6 @@ private:
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 	uint32_t mipLevels = 1;
-};
-
-struct QueueFamilyIndices
-{
-	std::optional<uint32_t> graphicsFamily;
-	std::optional<uint32_t> presentFamily;
-
-	bool isComplete()
-	{
-		return graphicsFamily.has_value() && presentFamily.has_value();
-	}
 };
 
 struct SwapChainSupportDetails

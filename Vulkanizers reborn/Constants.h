@@ -38,8 +38,10 @@ struct Settings
 	static constexpr unsigned int MAX_FRAMES_IN_FLIGHT = 2;
 	static constexpr unsigned short MAX_SPRITES = 512;
 	static constexpr unsigned short MAX_TEXTURES = 64;
-	static std::string FRAG_SHADER_PATH;
-	static std::string VERT_SHADER_PATH;
+	static std::string SPRITE_FRAG_SHADER_PATH;
+	static std::string SPRITE_VERT_SHADER_PATH;
+	static std::string FRACTAL_FRAG_SHADER_PATH;
+	static std::string FRACTAL_VERT_SHADER_PATH;
 };
 
 const std::vector<char const*> validationLayers = {

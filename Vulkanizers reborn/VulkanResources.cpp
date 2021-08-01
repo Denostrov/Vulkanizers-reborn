@@ -15,7 +15,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 std::vector<char const*> getRequiredExtensions();
 bool					checkValidationLayerSupport();
 void					populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT& createInfo);
-bool					isDeviceSuitable(vk::PhysicalDevice device, vk::SurfaceKHR surface);
+bool					isDeviceSuitable(vk::PhysicalDevice device, vk::SurfaceKHR surface, QueueFamilyIndices const& indices);
 QueueFamilyIndices		findQueueFamilies(vk::PhysicalDevice device, vk::SurfaceKHR surface);
 bool					checkDeviceExtensionSupport(vk::PhysicalDevice device);
 SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device, vk::SurfaceKHR surface);
@@ -52,8 +52,7 @@ namespace std
 }
 
 VulkanResources::VulkanResources(Game* game)
-	:vertShaderPath{ Settings::VERT_SHADER_PATH }, fragShaderPath{ Settings::FRAG_SHADER_PATH },
-	game{ game }
+	:game{ game }
 {
 	initWindow();
 
@@ -68,8 +67,11 @@ VulkanResources::~VulkanResources()
 	device.destroySampler(textureSampler);
 	std::cout << "destroyed texture sampler\n";
 
-	device.destroyDescriptorSetLayout(descriptorSetLayout, nullptr);
-	std::cout << "destroyed descriptor set layout\n";
+	for (auto i = 0; i < graphicsPipelinesData.size(); i++)
+	{
+		device.destroyDescriptorSetLayout(graphicsPipelinesData[i].descriptorSetLayout);
+		std::cout << "destroyed descriptor set layout number " << i << "\n";
+	}
 
 	device.destroyBuffer(indexBuffer);
 	device.freeMemory(indexBufferMemory);
@@ -89,6 +91,12 @@ VulkanResources::~VulkanResources()
 
 	device.destroyCommandPool(commandPool, nullptr);
 	std::cout << "destroyed command pool\n";
+
+	for (auto i = 0; i < textures.size(); i++)
+	{
+		textures[i] = Texture();
+	}
+	std::cout << "cleared texture array\n";
 
 	device.destroy();
 	std::cout << "destroyed device\n";
@@ -150,8 +158,7 @@ void VulkanResources::initVulkan()
 	createSwapChain();
 	createImageViews();
 	createRenderPass();
-	createDescriptorSetLayout();
-	createGraphicsPipeline();
+	createGraphicsPipelines();
 	createCommandPool();
 	createColorResources();
 	createDepthResources();
@@ -175,7 +182,7 @@ void VulkanResources::createInstance()
 		throw std::runtime_error("validation layers requested, but not available");
 	}
 
-	vk::ApplicationInfo appInfo("Totris", VK_MAKE_VERSION(1, 0, 0),
+	vk::ApplicationInfo appInfo("Fractels", VK_MAKE_VERSION(1, 0, 0),
 		"No Engine", VK_MAKE_VERSION(1, 0, 0), VK_API_VERSION_1_2);
 
 	auto glfwExtensions = getRequiredExtensions();
@@ -193,6 +200,7 @@ void VulkanResources::createInstance()
 
 		populateDebugMessengerCreateInfo(debugCreateInfo);
 
+		//debug messenger for instance creation and destruction
 		instanceInfo.pNext = &debugCreateInfo;
 	}
 	else
@@ -202,7 +210,13 @@ void VulkanResources::createInstance()
 		instanceInfo.pNext = nullptr;
 	}
 
-	vk::createInstance(&instanceInfo, nullptr, &instance);
+	auto result = vk::createInstance(&instanceInfo, nullptr, &instance);
+
+	if (result != vk::Result::eSuccess)
+	{
+		throw std::runtime_error("failed to create Vulkan instance");
+	}
+
 	std::cout << "created Vulkan instance\n";
 }
 
@@ -216,7 +230,12 @@ void VulkanResources::setupDebugMessenger()
 	vk::DebugUtilsMessengerCreateInfoEXT createInfo;
 	populateDebugMessengerCreateInfo(createInfo);
 
-	instance.createDebugUtilsMessengerEXT(&createInfo, nullptr, &debugMessenger);
+	auto result = instance.createDebugUtilsMessengerEXT(&createInfo, nullptr, &debugMessenger);
+	if (result != vk::Result::eSuccess)
+	{
+		throw std::runtime_error("failed to create debug utils messenger");
+	}
+
 	std::cout << "created debug messenger\n";
 }
 
@@ -251,9 +270,11 @@ void VulkanResources::pickPhysicalDevice()
 
 	for (auto const& device : devices)
 	{
-		if (isDeviceSuitable(device, surface))
+		QueueFamilyIndices indices = findQueueFamilies(device, surface);
+		if (isDeviceSuitable(device, surface, indices))
 		{
 			physicalDevice = device;
+			queueIndices = indices;
 			std::cout << "multisampling is disabled\n";
 			msaaSamples = vk::SampleCountFlagBits::e1;
 			break;
@@ -268,13 +289,12 @@ void VulkanResources::pickPhysicalDevice()
 
 void VulkanResources::createLogicalDevice()
 {
-	QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
-
 	//create graphics and present queues
 	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-	std::unordered_set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(),
-		indices.presentFamily.value() };
+	std::unordered_set<uint32_t> uniqueQueueFamilies = { queueIndices.graphicsFamily.value(),
+		queueIndices.presentFamily.value() };
 
+	//queue execution priority ranges from 0.0f to 1.0f
 	float queuePriority = 1.0f;
 	for (uint32_t queueFamily : uniqueQueueFamilies)
 	{
@@ -283,19 +303,33 @@ void VulkanResources::createLogicalDevice()
 	}
 
 	vk::PhysicalDeviceFeatures deviceFeatures;
-	deviceFeatures.samplerAnisotropy = VK_TRUE;
-	std::cout << "sampler anisotropy is enabled\n";
+
+	//sampler anisotropy support checked when picking physical device
+	auto physicalDeviceFeatures = physicalDevice.getFeatures();
+	if (physicalDeviceFeatures.samplerAnisotropy)
+	{
+		deviceFeatures.samplerAnisotropy = VK_TRUE;
+		std::cout << "sampler anisotropy is enabled\n";
+	}
+	else
+	{
+		std::cout << "sampler anisotropy is disabled\n";
+	}
 
 	if (msaaSamples != vk::SampleCountFlagBits::e1)
 	{
 		deviceFeatures.sampleRateShading = VK_TRUE;
 		std::cout << "sample rate shading is enabled\n";
 	}
+	else
+	{
+		std::cout << "sample rate shading is disabled\n";
+	}
 
 	vk::DeviceCreateInfo createInfo({}, (uint32_t)queueCreateInfos.size(), queueCreateInfos.data(),
 		{}, {}, (uint32_t)deviceExtensions.size(), deviceExtensions.data(), &deviceFeatures);
 
-	//add debug info layers
+	//add debug info layers (for compatibility)
 	if (enableValidationLayers)
 	{
 		createInfo.enabledLayerCount = (uint32_t)(validationLayers.size());
@@ -310,9 +344,9 @@ void VulkanResources::createLogicalDevice()
 
 	std::cout << "created logical device\n";
 
-	graphicsQueue = device.getQueue(indices.graphicsFamily.value(), 0);
+	graphicsQueue = device.getQueue(queueIndices.graphicsFamily.value(), 0);
 	std::cout << "created graphics queue\n";
-	presentQueue = device.getQueue(indices.presentFamily.value(), 0);
+	presentQueue = device.getQueue(queueIndices.presentFamily.value(), 0);
 	std::cout << "created present queue\n";
 }
 
@@ -335,9 +369,8 @@ void VulkanResources::createSwapChain()
 	vk::SwapchainCreateInfoKHR createInfo({}, surface, imageCount, surfaceFormat.format,
 		surfaceFormat.colorSpace, extent, 1, vk::ImageUsageFlagBits::eColorAttachment);
 
-	QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
-	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
-	if (indices.graphicsFamily != indices.presentFamily)
+	uint32_t queueFamilyIndices[] = { queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value() };
+	if (queueIndices.graphicsFamily != queueIndices.presentFamily)
 	{
 		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
 		createInfo.queueFamilyIndexCount = 2;
@@ -432,8 +465,7 @@ void VulkanResources::createRenderPass()
 	std::array<vk::AttachmentDescription, 2> attachments = { colorAttachment,
 		depthAttachment };
 
-	vk::RenderPassCreateInfo renderPassInfo({}, (uint32_t)attachments.size(),
-		attachments.data(), 1, &subpass);
+	vk::RenderPassCreateInfo renderPassInfo({}, attachments, subpass);
 
 	vk::SubpassDependency dependency(VK_SUBPASS_EXTERNAL, 0,
 		vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput,
@@ -442,11 +474,11 @@ void VulkanResources::createRenderPass()
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	renderPass = device.createRenderPass(renderPassInfo, nullptr);
+	renderPass = device.createRenderPass(renderPassInfo);
 	std::cout << "created render pass\n";
 }
 
-void VulkanResources::createDescriptorSetLayout()
+[[nodiscard]] vk::DescriptorSetLayout createDescriptorSetLayout(vk::Device device)
 {
 	vk::DescriptorSetLayoutBinding uboLayoutBinding(0, vk::DescriptorType::eUniformBuffer,
 		1, vk::ShaderStageFlagBits::eVertex, nullptr);
@@ -456,90 +488,112 @@ void VulkanResources::createDescriptorSetLayout()
 
 	std::array<vk::DescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
 
-	vk::DescriptorSetLayoutCreateInfo layoutInfo({}, (uint32_t)bindings.size(), bindings.data());
+	vk::DescriptorSetLayoutCreateInfo layoutInfo({}, bindings);
 
-	descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo, nullptr);
+	auto result = device.createDescriptorSetLayout(layoutInfo);
 	std::cout << "created descriptor set layout\n";
+
+	return result;
 }
 
-void VulkanResources::createGraphicsPipeline()
+void populateGraphicsPipelineCreateData(PipelineCreateData& result, vk::Device device, std::string const& vertShaderFilename, std::string const& fragShaderFilename,
+	vk::ArrayProxyNoTemporaries<vk::VertexInputBindingDescription const> const bindingDescription, vk::ArrayProxyNoTemporaries<vk::VertexInputAttributeDescription const> const attributeDescriptions,
+	vk::PrimitiveTopology primitiveTopology, vk::Extent2D swapChainExtent, vk::SampleCountFlagBits msaaSamples)
 {
-	auto vertShaderCode = readFile(vertShaderPath);
-	auto fragShaderCode = readFile(fragShaderPath);
+	result.shaderModules = ShaderModulePair(vertShaderFilename, fragShaderFilename, device);
 
-	vk::ShaderModule vertShaderModule = createShaderModule(vertShaderCode, device);
-	std::cout << "created vertex shader module\n";
-	vk::ShaderModule fragShaderModule = createShaderModule(fragShaderCode, device);
-	std::cout << "created fragment shader module\n";
+	result.vertexInputInfo = vk::PipelineVertexInputStateCreateInfo({}, bindingDescription, attributeDescriptions);
 
-	vk::PipelineShaderStageCreateInfo vertShaderStageInfo({},
-		vk::ShaderStageFlagBits::eVertex, vertShaderModule, "main");
+	result.inputAssembly = vk::PipelineInputAssemblyStateCreateInfo({}, primitiveTopology, VK_FALSE);
 
-	vk::PipelineShaderStageCreateInfo fragShaderStageInfo({},
-		vk::ShaderStageFlagBits::eFragment, fragShaderModule, "main");
+	result.viewport = vk::Viewport(0.0f, 0.0f, (float)swapChainExtent.width, (float)swapChainExtent.height, 0.0f, 1.0f);
+	result.scissor = vk::Rect2D({ 0, 0 }, swapChainExtent);
+	result.viewportState = vk::PipelineViewportStateCreateInfo({}, result.viewport, result.scissor);
 
-	vk::PipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+	result.rasterizer = vk::PipelineRasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE,
+		vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise, VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
 
-	auto bindingDescription = Vertex::getBindingDescription();
-	auto attributeDescriptions = Vertex::getAttributeDescriptions();
+	result.multisampling = vk::PipelineMultisampleStateCreateInfo({}, msaaSamples, VK_FALSE, 0.0f, nullptr, VK_FALSE, VK_FALSE);
+	if (msaaSamples != vk::SampleCountFlagBits::e1)
+	{
+		result.multisampling.sampleShadingEnable = VK_TRUE;
+	}
 
-	vk::PipelineVertexInputStateCreateInfo vertexInputInfo({}, 1, &bindingDescription,
-		(uint32_t)attributeDescriptions.size(), attributeDescriptions.data());
-
-	vk::PipelineInputAssemblyStateCreateInfo inputAssembly({},
-		vk::PrimitiveTopology::eTriangleList, VK_FALSE);
-
-	vk::Viewport viewport(0.0f, 0.0f, (float)swapChainExtent.width,
-		(float)swapChainExtent.height, 0.0f, 1.0f);
-
-	vk::Rect2D scissor({ 0, 0 }, swapChainExtent);
-
-	vk::PipelineViewportStateCreateInfo viewPortState({}, 1, &viewport, 1, &scissor);
-
-	vk::PipelineRasterizationStateCreateInfo rasterizer({}, VK_FALSE, VK_FALSE,
-		vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise,
-		VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
-
-	vk::PipelineMultisampleStateCreateInfo multisampling({}, msaaSamples, VK_FALSE, 0.0f,
-		nullptr, VK_FALSE, VK_FALSE);
-
-	vk::PipelineColorBlendAttachmentState colorBlendAttachment(VK_TRUE, vk::BlendFactor::eSrcAlpha,
+	//alpha blending
+	result.colorBlendAttachment = vk::PipelineColorBlendAttachmentState(VK_TRUE, vk::BlendFactor::eSrcAlpha,
 		vk::BlendFactor::eOneMinusSrcAlpha, vk::BlendOp::eAdd, vk::BlendFactor::eOne, vk::BlendFactor::eZero,
 		vk::BlendOp::eAdd, vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
 		vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
 
-	vk::PipelineColorBlendStateCreateInfo colorBlending({}, VK_FALSE, vk::LogicOp::eCopy,
-		1, &colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f });
+	result.colorBlending = vk::PipelineColorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, result.colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f });
 
-	vk::PipelineDepthStencilStateCreateInfo depthStencil({}, VK_TRUE, VK_TRUE,
-		vk::CompareOp::eLess, VK_FALSE, VK_FALSE, {}, {}, 0.0f, 1.0f);
+	result.depthStencil = vk::PipelineDepthStencilStateCreateInfo({}, VK_TRUE, VK_TRUE, vk::CompareOp::eLess, VK_FALSE, VK_FALSE, {}, {}, 0.0f, 1.0f);
+}
 
-	vk::PushConstantRange range(vk::ShaderStageFlagBits::eFragment, 0, 2 * sizeof(float));
+void VulkanResources::createGraphicsPipelines()
+{
+	graphicsPipelinesData.clear();
+	graphicsPipelinesData.resize(2);
 
-	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, 1, &descriptorSetLayout, 1, &range);
+	std::vector<vk::GraphicsPipelineCreateInfo> pipelineCreateInfos;
+	std::vector<PipelineCreateData> pipelineCreationData;
+	pipelineCreationData.resize(2);
 
-	pipelineLayout = device.createPipelineLayout(pipelineLayoutInfo, nullptr);
+	auto bindingDescription = Vertex::getBindingDescription();
+	auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+	graphicsPipelinesData[0].descriptorSetLayout = createDescriptorSetLayout(device);
+
+	vk::PushConstantRange pushConstantRange(vk::ShaderStageFlagBits::eFragment, 0, 2 * sizeof(float));
+
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, graphicsPipelinesData[0].descriptorSetLayout, pushConstantRange);
+
+	graphicsPipelinesData[0].layout = device.createPipelineLayout(pipelineLayoutInfo);
 	std::cout << "created pipeline layout\n";
 
-	vk::GraphicsPipelineCreateInfo pipelineInfo({}, 2, shaderStages, &vertexInputInfo,
-		&inputAssembly, nullptr, &viewPortState, &rasterizer, &multisampling, &depthStencil,
-		&colorBlending, nullptr, pipelineLayout, renderPass, 0, vk::Pipeline(nullptr), -1);
+	populateGraphicsPipelineCreateData(pipelineCreationData[0], device, Settings::SPRITE_VERT_SHADER_PATH, Settings::SPRITE_FRAG_SHADER_PATH, bindingDescription, attributeDescriptions,
+		vk::PrimitiveTopology::eTriangleList, swapChainExtent, msaaSamples);
 
-	graphicsPipeline = device.createGraphicsPipelines(vk::PipelineCache(nullptr), pipelineInfo, nullptr).value[0];
-	std::cout << "created graphics pipeline\n";
+	vk::GraphicsPipelineCreateInfo pipelineCreateInfo({}, pipelineCreationData[0].shaderModules.shaderStages, &pipelineCreationData[0].vertexInputInfo, &pipelineCreationData[0].inputAssembly, nullptr,
+		&pipelineCreationData[0].viewportState, &pipelineCreationData[0].rasterizer, &pipelineCreationData[0].multisampling, &pipelineCreationData[0].depthStencil,
+		&pipelineCreationData[0].colorBlending, nullptr, graphicsPipelinesData[0].layout, renderPass, 0, vk::Pipeline(nullptr), -1);
 
-	device.destroyShaderModule(fragShaderModule, nullptr);
-	device.destroyShaderModule(vertShaderModule, nullptr);
-	std::cout << "destroyed shader modules\n";
+	pipelineCreateInfos.push_back(pipelineCreateInfo);
+
+
+	graphicsPipelinesData[1].descriptorSetLayout = nullptr;
+
+	pipelineLayoutInfo = vk::PipelineLayoutCreateInfo({}, nullptr, nullptr);
+
+	graphicsPipelinesData[1].layout = device.createPipelineLayout(pipelineLayoutInfo);
+	std::cout << "created pipeline layout\n";
+
+	populateGraphicsPipelineCreateData(pipelineCreationData[1], device, Settings::FRACTAL_VERT_SHADER_PATH, Settings::FRACTAL_FRAG_SHADER_PATH, nullptr, nullptr,
+		vk::PrimitiveTopology::eTriangleStrip, swapChainExtent, msaaSamples);
+
+	pipelineCreateInfo = vk::GraphicsPipelineCreateInfo({}, pipelineCreationData[1].shaderModules.shaderStages, &pipelineCreationData[1].vertexInputInfo, &pipelineCreationData[1].inputAssembly, nullptr,
+		&pipelineCreationData[1].viewportState, &pipelineCreationData[1].rasterizer, &pipelineCreationData[1].multisampling, &pipelineCreationData[1].depthStencil,
+		&pipelineCreationData[1].colorBlending, nullptr, graphicsPipelinesData[1].layout, renderPass, 0, vk::Pipeline(nullptr), -1);
+
+	pipelineCreateInfos.push_back(pipelineCreateInfo);
+
+	auto valueResult = device.createGraphicsPipelines(vk::PipelineCache(nullptr), pipelineCreateInfos);
+	if (valueResult.result != vk::Result::eSuccess)
+	{
+		throw std::runtime_error("error creating pipelines");
+	}
+	for (int i = 0; i < valueResult.value.size(); i++)
+	{
+		graphicsPipelinesData[i].pipeline = valueResult.value[i];
+	}
+	std::cout << "created graphics pipelines\n";
 }
 
 void VulkanResources::createCommandPool()
 {
-	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice, surface);
-
 	vk::CommandPoolCreateInfo poolInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient,
-		queueFamilyIndices.graphicsFamily.value());
-	commandPool = device.createCommandPool(poolInfo, nullptr);
+		queueIndices.graphicsFamily.value());
+	commandPool = device.createCommandPool(poolInfo);
 	std::cout << "created command pool\n";
 }
 
@@ -581,8 +635,7 @@ void VulkanResources::createFramebuffers()
 			depthImageView
 		};
 
-		vk::FramebufferCreateInfo framebufferInfo({}, renderPass, (uint32_t)attachments.size(),
-			attachments.data(), (uint32_t)swapChainExtent.width, (uint32_t)swapChainExtent.height, 1);
+		vk::FramebufferCreateInfo framebufferInfo({}, renderPass, attachments, (uint32_t)swapChainExtent.width, (uint32_t)swapChainExtent.height, 1);
 
 		swapChainFramebuffers[i] = device.createFramebuffer(framebufferInfo);
 	}
@@ -614,7 +667,7 @@ void VulkanResources::createTextures()
 
 void VulkanResources::createTextureSampler()
 {
-	vk::SamplerCreateInfo samplerInfo({}, vk::Filter::eLinear, vk::Filter::eLinear,
+	vk::SamplerCreateInfo samplerInfo({}, vk::Filter::eNearest, vk::Filter::eNearest,
 		vk::SamplerMipmapMode::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToEdge,
 		vk::SamplerAddressMode::eClampToEdge, 0.0f, VK_TRUE, 16, VK_FALSE, vk::CompareOp::eAlways,
 		0.0f, 1.0f, vk::BorderColor::eFloatTransparentBlack, VK_FALSE);
@@ -734,14 +787,13 @@ void VulkanResources::createSyncObjects()
 
 void VulkanResources::drawFrame()
 {
-	device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+	auto result = device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
 	vk::ResultValue<uint32_t> resultValue(vk::Result::eSuccess, 0);
 	try
 	{
-		resultValue = device.acquireNextImageKHR(swapChain, UINT64_MAX,
-			imageAvailableSemaphores[currentFrame], nullptr);
+		resultValue = device.acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr);
 		imageIndex = resultValue.value;
 	}
 	catch (std::exception const& e)
@@ -759,7 +811,7 @@ void VulkanResources::drawFrame()
 
 	if (imagesInFlight[imageIndex])
 	{
-		device.waitForFences(imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		result = device.waitForFences(imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
 	}
 
 	imagesInFlight[imageIndex] = inFlightFences[currentFrame];
@@ -775,7 +827,7 @@ void VulkanResources::drawFrame()
 	vk::SubmitInfo submitInfo(1, waitSemaphores.data(), waitStages.data(), 1,
 		&commandBuffers[imageIndex], 1, signalSemaphores.data());
 
-	device.resetFences(1, &inFlightFences[currentFrame]);
+	result = device.resetFences(1, &inFlightFences[currentFrame]);
 
 	graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
 
@@ -812,6 +864,7 @@ void VulkanResources::cleanupSwapChain()
 	{
 		device.freeCommandBuffers(commandPool, commandBuffers[i]);
 	}
+	std::cout << "freed command buffers\n";
 
 	device.destroyImageView(colorImageView);
 	device.destroyImage(colorImage);
@@ -829,9 +882,12 @@ void VulkanResources::cleanupSwapChain()
 	}
 	std::cout << "destroyed " << swapChainFramebuffers.size() << " framebuffers\n";
 
-	device.destroyPipeline(graphicsPipeline, nullptr);
-	device.destroyPipelineLayout(pipelineLayout, nullptr);
-	std::cout << "destroyed pipeline and pipeline layout\n";
+	for (auto i = 0; i < graphicsPipelinesData.size(); i++)
+	{
+		device.destroyPipeline(graphicsPipelinesData[i].pipeline);
+		device.destroyPipelineLayout(graphicsPipelinesData[i].layout);
+		std::cout << "destroyed pipeline and pipeline layout number " << i << "\n";
+	}
 
 	device.destroyRenderPass(renderPass, nullptr);
 	std::cout << "destroyed render pass\n";
@@ -867,7 +923,7 @@ void VulkanResources::recreateSwapChain()
 	createSwapChain();
 	createImageViews();
 	createRenderPass();
-	createGraphicsPipeline();
+	createGraphicsPipelines();
 	createColorResources();
 	createDepthResources();
 	createFramebuffers();
@@ -900,7 +956,8 @@ void VulkanResources::updateCommandBuffer(uint32_t imageIndex)
 		renderArea, (uint32_t)clearValues.size(), clearValues.data());
 
 	commandBuffers[imageIndex].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-	commandBuffers[imageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+
+	commandBuffers[imageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipelinesData[0].pipeline);
 
 	vk::DeviceSize offsets = { 0 };
 	commandBuffers[imageIndex].bindVertexBuffers(0, vertexBuffer, offsets);
@@ -913,12 +970,16 @@ void VulkanResources::updateCommandBuffer(uint32_t imageIndex)
 	{
 		if (!sprites[i].isRemoved)
 		{
-			commandBuffers[imageIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout,
+			commandBuffers[imageIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, graphicsPipelinesData[0].layout,
 				0, sprites[i].descriptorSets[imageIndex], nullptr);
 
 			commandBuffers[imageIndex].drawIndexed((uint32_t)indices.size(), 1, 0, 0, 0);
 		}
 	}
+
+	commandBuffers[imageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipelinesData[1].pipeline);
+	commandBuffers[imageIndex].draw(4, 1, 0, 0);
+
 	commandBuffers[imageIndex].endRenderPass();
 	commandBuffers[imageIndex].end();
 }
@@ -1022,8 +1083,7 @@ std::vector<char const*> getRequiredExtensions()
 void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT& createInfo)
 {
 	createInfo = vk::DebugUtilsMessengerCreateInfoEXT();
-	createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-		vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
+	createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
 	createInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
 		vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
 	createInfo.pfnUserCallback = debugCallback;
@@ -1048,7 +1108,7 @@ static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 	program->game->setWindowWasResized();
 }
 
-bool isDeviceSuitable(vk::PhysicalDevice device, vk::SurfaceKHR surface)
+bool isDeviceSuitable(vk::PhysicalDevice device, vk::SurfaceKHR surface, QueueFamilyIndices const& indices)
 {
 	vk::PhysicalDeviceProperties deviceProperties = device.getProperties();
 	std::cout << deviceProperties.deviceName << " is being queried\n";
@@ -1056,13 +1116,14 @@ bool isDeviceSuitable(vk::PhysicalDevice device, vk::SurfaceKHR surface)
 	std::cout << deviceProperties.limits.maxVertexInputBindings << " max vertex input bindings\n";
 	std::cout << deviceProperties.limits.maxDescriptorSetUniformBuffers << " max descriptor set uniform buffers\n";
 	std::cout << deviceProperties.limits.maxMemoryAllocationCount << " max memory allocation count\n";
+	std::cout << deviceProperties.limits.maxBoundDescriptorSets << " max bound descriptor sets\n";
+	std::cout << deviceProperties.limits.maxPushConstantsSize << " max push constants size\n";
+	std::cout << deviceProperties.limits.maxImageDimension2D << " max 2D image dimension\n";
 	std::cout << deviceProperties.vendorID << " vendor id\n";
 	if (deviceProperties.vendorID == 0x8086)
 	{
 		return false;
 	}
-
-	QueueFamilyIndices indices = findQueueFamilies(device, surface);
 
 	std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
 	std::cout << "Total number of queue families: " << queueFamilies.size() << "\n";
@@ -1177,6 +1238,7 @@ vk::SurfaceFormatKHR chooseSwapSurfaceFormat(std::vector<vk::SurfaceFormatKHR> c
 {
 	for (auto const& availableFormat : availableFormats)
 	{
+		//writes values unchanged and treats them as srgb
 		if (availableFormat.format == vk::Format::eB8G8R8A8Unorm &&
 			availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
 		{
@@ -1581,4 +1643,71 @@ void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size,
 	commandBuffer.copyBuffer(srcBuffer, dstBuffer, copyRegion);
 
 	endSingleTimeCommands(commandBuffer, device, commandPool, graphicsQueue);
+}
+
+ShaderModulePair::ShaderModulePair()
+	:vertShaderModule{ nullptr }, fragShaderModule{ nullptr }, device{ nullptr }
+{}
+
+ShaderModulePair::ShaderModulePair(std::string const& vertFilename, std::string const& fragFilename, vk::Device device)
+	: device{ device }
+{
+	auto vertShaderCode = readFile(vertFilename);
+	auto fragShaderCode = readFile(fragFilename);
+
+	vertShaderModule = createShaderModule(vertShaderCode, device);
+	std::cout << "created vertex shader module\n";
+	fragShaderModule = createShaderModule(fragShaderCode, device);
+	std::cout << "created fragment shader module\n";
+
+	createShaderStages();
+}
+
+ShaderModulePair::~ShaderModulePair()
+{
+	if (fragShaderModule)
+	{
+		device.destroyShaderModule(fragShaderModule);
+		std::cout << "destroyed frag shader module\n";
+	}
+	if (vertShaderModule)
+	{
+		device.destroyShaderModule(vertShaderModule);
+		std::cout << "destroyed vert shader module\n";
+	}
+}
+
+ShaderModulePair::ShaderModulePair(ShaderModulePair&& rhs) noexcept
+	:vertShaderModule{ std::exchange(rhs.vertShaderModule, nullptr) }, fragShaderModule{ std::exchange(rhs.fragShaderModule, nullptr) }, device{ std::exchange(rhs.device, nullptr) }
+{
+	createShaderStages();
+}
+
+ShaderModulePair& ShaderModulePair::operator=(ShaderModulePair&& rhs) noexcept
+{
+	if (this != &rhs)
+	{
+		if (fragShaderModule)
+		{
+			device.destroyShaderModule(fragShaderModule);
+		}
+		if (vertShaderModule)
+		{
+			device.destroyShaderModule(vertShaderModule);
+		}
+
+		vertShaderModule = std::exchange(rhs.vertShaderModule, nullptr);
+		fragShaderModule = std::exchange(rhs.fragShaderModule, nullptr);
+		device = std::exchange(rhs.device, nullptr);
+		createShaderStages();
+	}
+	return *this;
+}
+
+void ShaderModulePair::createShaderStages()
+{
+	vk::PipelineShaderStageCreateInfo vertShaderStageInfo({}, vk::ShaderStageFlagBits::eVertex, vertShaderModule, "main");
+	vk::PipelineShaderStageCreateInfo fragShaderStageInfo({}, vk::ShaderStageFlagBits::eFragment, fragShaderModule, "main");
+
+	shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
 }

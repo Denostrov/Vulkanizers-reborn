@@ -2,7 +2,12 @@
 #include "VulkanResources.h"
 #include "Game.h"
 
+SpritePool::Sprite::Sprite()
+	:remainingUpdates{ 0 }, isRemoved{ true }, object{ nullptr }, posX{ 0.0f }, posY{ 0.0f }, layer{ SpriteLayers::eGUI }, sizeX{ -1.0f }, sizeY{ -1.0f }, rotation{ 0.0f }, texture{ nullptr }
+{}
+
 SpritePool::Sprite::Sprite(VulkanResources* vulkan)
+	:object{ nullptr }, texture{ nullptr }
 {
 	uniformBuffers.resize(vulkan->swapChainImages.size());
 	uniformBuffersMemory.resize(vulkan->swapChainImages.size());
@@ -16,7 +21,7 @@ SpritePool::Sprite::Sprite(VulkanResources* vulkan)
 		mapped[i] = vulkan->device.mapMemory(uniformBuffersMemory[i], 0, sizeof(UniformBufferObject));
 	}
 
-	std::vector<vk::DescriptorSetLayout> layouts(vulkan->swapChainImages.size(), vulkan->descriptorSetLayout);
+	std::vector<vk::DescriptorSetLayout> layouts(vulkan->swapChainImages.size(), vulkan->graphicsPipelinesData[0].descriptorSetLayout);
 	vk::DescriptorSetAllocateInfo allocInfo(vulkan->descriptorPool, (uint32_t)vulkan->swapChainImages.size(), layouts.data());
 
 	descriptorSets = vulkan->device.allocateDescriptorSets(allocInfo);
@@ -41,7 +46,7 @@ void SpritePool::Sprite::instantiate(float posX, float posY, SpriteLayers layer,
 	{
 		UniformBufferObject ubo = {};
 		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(posX, posY, toUType(layer)/ 10.0f));
+		model = glm::translate(model, glm::vec3(posX, posY, toUType(layer) / 10.0f));
 		model = glm::rotate(model, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
 		model = glm::scale(model, glm::vec3(sizeX, sizeY, 1.0f));
 		ubo.mvp = glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f) * model;
@@ -107,6 +112,7 @@ SpritePool::SpritePool(VulkanResources* vulkan)
 	{
 		sprite = Sprite(vulkan);
 	}
+
 }
 
 SpritePool::~SpritePool()
@@ -160,7 +166,7 @@ void SpritePool::clear()
 {
 	//wait until gpu is done
 	vulkan->device.waitIdle();
-	for (int i = 0; i < spriteCount; i++)
+	for (int i = 0; i < sprites.size(); i++)
 	{
 		//make objects forget about their sprites
 		if (sprites[i].object)
@@ -168,8 +174,8 @@ void SpritePool::clear()
 			sprites[i].object->spriteIndex = -1;
 		}
 		sprites[i].destroy(vulkan);
-		std::cout << "destroyed sprite at " << i << " index\n";
 	}
+	std::cout << "destroyed all sprites\n";
 	spriteCount = 0;
 }
 

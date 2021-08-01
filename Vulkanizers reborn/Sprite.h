@@ -13,7 +13,7 @@ class SpritePool
 	class Sprite
 	{
 	public:
-		Sprite() = default;
+		Sprite();
 		~Sprite() = default;
 
 		//allocate all vulkan resources preemptively
