@@ -4,7 +4,7 @@
 Game::Game()
 	:lastFrameTime{ 0 }, deltaTime{ 0 }, fpsFramesRendered{ 0 }, fpsTimePassed{ 0.0f },
 	updateTime{ 0.0f }, gameOver{ false }, soundEngine{ std::make_unique<SoundEngine>() }, vulkan{ std::make_unique<VulkanResources>(this) },
-	cursor{ vulkan.get(), Settings::CURSOR_SIZE }, random{}, gen{ random() }
+	cursor{ vulkan.get(), Settings::CURSOR_SIZE }, random{}, gen{ random() }, camera{ glm::vec3(0.0f, -2.0f, 0.0f), 1.0f }, steps{ 100.0f }, sphereSize{ 0.15f }
 {
 
 	//get window pointer from vulkan
@@ -22,7 +22,7 @@ Game::Game()
 
 Game::~Game()
 {
-	
+
 }
 
 void Game::start()
@@ -48,6 +48,47 @@ void Game::start()
 		{
 			//update key arrays
 			processInput();
+
+			if (keysHeld[GLFW_KEY_W])
+			{
+				camera.position.z -= 0.01f;
+			}
+			if (keysHeld[GLFW_KEY_S])
+			{
+				camera.position.z += 0.01f;
+			}
+			if (keysHeld[GLFW_KEY_A])
+			{
+				camera.position.x -= 0.01f;
+			}
+			if (keysHeld[GLFW_KEY_D])
+			{
+				camera.position.x += 0.01f;
+			}
+			if (keysHeld[GLFW_KEY_LEFT_SHIFT])
+			{
+				camera.position.y += 0.01f;
+			}
+			if (keysHeld[GLFW_KEY_LEFT_CONTROL])
+			{
+				camera.position.y -= 0.01f;
+			}
+			if (keysHeld[GLFW_KEY_UP])
+			{
+				steps += 0.01f * 10.0f;
+			}
+			if (keysHeld[GLFW_KEY_DOWN])
+			{
+				steps -= 0.01f * 10.0f;
+			}
+			if (keysHeld[GLFW_KEY_Q])
+			{
+				sphereSize -= 0.01f * 0.01f;
+			}
+			if (keysHeld[GLFW_KEY_E])
+			{
+				sphereSize += 0.01f * 0.01f;
+			}
 
 			/*if (keysPressed[GLFW_KEY_SPACE])
 			{
@@ -203,7 +244,7 @@ void Game::calculateDeltaTime()
 
 void Game::update()
 {
-	
+
 }
 
 void Game::drawFrame()

@@ -55,7 +55,7 @@ const std::vector<char const*> deviceExtensions = {
 //keys that are polled every frame
 const std::vector<short> mappedKeys = {
 	GLFW_KEY_ESCAPE, GLFW_KEY_SPACE, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_LEFT,
-	GLFW_KEY_RIGHT, GLFW_KEY_K, GLFW_KEY_P, GLFW_KEY_A, GLFW_KEY_D, GLFW_KEY_S
+	GLFW_KEY_RIGHT, GLFW_KEY_K, GLFW_KEY_P, GLFW_KEY_W, GLFW_KEY_A, GLFW_KEY_D, GLFW_KEY_S, GLFW_KEY_Q, GLFW_KEY_E, GLFW_KEY_LEFT_SHIFT, GLFW_KEY_LEFT_CONTROL
 };
 
 const std::vector<char> mappedMouseKeys = {

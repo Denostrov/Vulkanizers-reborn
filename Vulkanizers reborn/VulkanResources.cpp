@@ -540,7 +540,7 @@ void VulkanResources::createGraphicsPipelines()
 
 	vk::PushConstantRange pushConstantRange(vk::ShaderStageFlagBits::eFragment, 0, 2 * sizeof(float));
 
-	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, graphicsPipelinesData[0].descriptorSetLayout, pushConstantRange);
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfo({}, graphicsPipelinesData[0].descriptorSetLayout, nullptr);
 
 	graphicsPipelinesData[0].layout = device.createPipelineLayout(pipelineLayoutInfo);
 	std::cout << "created pipeline layout\n";
@@ -557,7 +557,7 @@ void VulkanResources::createGraphicsPipelines()
 
 	graphicsPipelinesData[1].descriptorSetLayout = nullptr;
 
-	pushConstantRange = vk::PushConstantRange(vk::ShaderStageFlagBits::eFragment, 0, 4 * sizeof(float));
+	pushConstantRange = vk::PushConstantRange(vk::ShaderStageFlagBits::eFragment, 0, 8 * sizeof(float));
 
 	pipelineLayoutInfo = vk::PipelineLayoutCreateInfo({}, nullptr, pushConstantRange);
 
@@ -976,7 +976,13 @@ void VulkanResources::updateCommandBuffer(uint32_t imageIndex)
 
 	commandBuffers[imageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipelinesData[1].pipeline);
 
-	glm::vec4 pushConstantData(swapChainExtent.width, swapChainExtent.height, 100, 0.15f);
+	struct PushConstantData
+	{
+		glm::vec4 data1;
+		glm::vec4 data2;
+	} pushConstantData;
+	pushConstantData.data1 = glm::vec4(swapChainExtent.width, swapChainExtent.height, game->steps, game->sphereSize);
+	pushConstantData.data2 = glm::vec4(game->camera.position, game->camera.focalLength);
 	commandBuffers[imageIndex].pushConstants(graphicsPipelinesData[1].layout, vk::ShaderStageFlagBits::eFragment, 0, sizeof(pushConstantData), &pushConstantData);
 
 	commandBuffers[imageIndex].draw(4, 1, 0, 0);

@@ -3,6 +3,7 @@
 #include "VulkanResources.h"
 #include "GraphicsComponent.h"
 #include "Cursor.h"
+#include "Camera.h"
 #include <random>
 #include <array>
 #include <cassert>
@@ -33,6 +34,9 @@ public:
 	bool getWindowWasResized() const noexcept { return windowResized; }
 	void setWindowWasResized() noexcept { windowResized = true; }
 
+	Camera camera;
+	float steps;
+	float sphereSize;
 private:
 	void calculateDeltaTime();
 	//check window resizing, update cursor/keys

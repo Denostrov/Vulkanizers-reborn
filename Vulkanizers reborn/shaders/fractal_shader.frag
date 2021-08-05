@@ -34,7 +34,7 @@ void main()
 {
 	vec3 horizontal = vec3(pushConstants.data.x / pushConstants.data.y, 0.0, 0.0);
 	vec3 vertical = vec3(0.0, 1.0, 0.0);
-	vec3 lowerLeftCorner = -horizontal/2 -vertical/2 - vec3(0.0, 0.0, 1.0);
-	float pixelColor = trace(vec3(0.0, 0.0, 0.0), normalize(lowerLeftCorner + gl_FragCoord.x/pushConstants.data.x * horizontal + gl_FragCoord.y/pushConstants.data.y * vertical));
+	vec3 lowerLeftCorner = pushConstants.cameraPos.xyz - horizontal/2.0 - vertical/2.0 - vec3(0.0, 0.0, pushConstants.cameraPos.w);
+	float pixelColor = trace(pushConstants.cameraPos.xyz, normalize(lowerLeftCorner + gl_FragCoord.x/pushConstants.data.x * horizontal + gl_FragCoord.y/pushConstants.data.y * vertical - pushConstants.cameraPos.xyz));
 	outColor = vec4(pixelColor, pixelColor, pixelColor, 1.0);
 }
