@@ -67,11 +67,11 @@ void Game::start()
 			}
 			if (keysHeld[GLFW_KEY_LEFT_SHIFT])
 			{
-				camera.position.y += 0.01f;
+				camera.position.y -= 0.01f;
 			}
 			if (keysHeld[GLFW_KEY_LEFT_CONTROL])
 			{
-				camera.position.y -= 0.01f;
+				camera.position.y += 0.01f;
 			}
 			if (keysHeld[GLFW_KEY_UP])
 			{
