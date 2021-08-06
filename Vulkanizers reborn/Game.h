@@ -37,6 +37,7 @@ public:
 	Camera camera;
 	float steps;
 	float sphereSize;
+	bool cursorEnabled;
 private:
 	void calculateDeltaTime();
 	//check window resizing, update cursor/keys
@@ -44,6 +45,8 @@ private:
 	void drawFrame();
 	void update();
 	void resetGame();
+	void enableCursor();
+	void disableCursor();
 
 	bool keysPressed[512];
 	bool keysHeld[512];

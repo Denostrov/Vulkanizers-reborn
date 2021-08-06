@@ -1,7 +1,13 @@
 #include "Cursor.h"
 
+Cursor::Cursor()
+	:xPos{ 0.0 }, yPos{ 0.0 }, size{ 0.0 }
+{
+
+}
+
 Cursor::Cursor(VulkanResources* vulkan, float size)
-	:xPos{ 0.0 }, yPos{ 0.0 }, size{ size }, selectedPiece{ nullptr }
+	:xPos{ 0.0 }, yPos{ 0.0 }, size{ size }
 {
 	assert(vulkan && "created cursor with nullptr vulkan");
 	createSprite(vulkan);

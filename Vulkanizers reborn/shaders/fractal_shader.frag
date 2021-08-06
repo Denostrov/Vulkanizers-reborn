@@ -7,6 +7,9 @@ layout( push_constant ) uniform constants
 {
 	vec4 data; //viewport width, viewport height, steps, sphere size
 	vec4 cameraPos; //4th argument is focal length
+	vec4 cameraHorizontal;
+	vec4 cameraVertical;
+	vec4 cameraDirection;
 } pushConstants;
 
 float DE(vec3 point)
@@ -32,9 +35,9 @@ float trace(vec3 from, vec3 direction)
 
 void main() 
 {
-	vec3 horizontal = vec3(pushConstants.data.x / pushConstants.data.y, 0.0, 0.0);
-	vec3 vertical = vec3(0.0, 1.0, 0.0);
-	vec3 lowerLeftCorner = pushConstants.cameraPos.xyz - horizontal/2.0 - vertical/2.0 - vec3(0.0, 0.0, pushConstants.cameraPos.w);
-	float pixelColor = trace(pushConstants.cameraPos.xyz, normalize(lowerLeftCorner + gl_FragCoord.x/pushConstants.data.x * horizontal + gl_FragCoord.y/pushConstants.data.y * vertical - pushConstants.cameraPos.xyz));
+	vec3 horizontal = pushConstants.cameraHorizontal.xyz * pushConstants.data.x / pushConstants.data.y;
+	vec3 vertical = pushConstants.cameraVertical.xyz;
+	vec3 topLeftCorner = pushConstants.cameraPos.xyz - horizontal/2.0 + vertical/2.0 + pushConstants.cameraDirection.xyz * pushConstants.cameraPos.w;
+	float pixelColor = trace(pushConstants.cameraPos.xyz, normalize(topLeftCorner + gl_FragCoord.x/pushConstants.data.x * horizontal - gl_FragCoord.y/pushConstants.data.y * vertical - pushConstants.cameraPos.xyz));
 	outColor = vec4(pixelColor, pixelColor, pixelColor, 1.0);
 }

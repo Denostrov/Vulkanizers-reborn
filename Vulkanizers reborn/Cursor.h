@@ -10,14 +10,16 @@ class Piece;
 class Cursor
 {
 public:
+	//spriteless cursor
+	Cursor();
 	//make cursor at 0,0 of size
 	Cursor(VulkanResources* vulkan, float size);
 	~Cursor() = default;
 
 	Cursor(Cursor const&) = delete;
 	Cursor& operator=(Cursor const&) = delete;
-	Cursor(Cursor&&) = delete;
-	Cursor& operator=(Cursor&&) = delete;
+	Cursor(Cursor&&) = default;
+	Cursor& operator=(Cursor&&) = default;
 
 	void recreateSprite() { createSprite(sprite.vulkan); }	//remake the graphics component
 	void update(GLFWwindow* window);						//update position and move sprite
@@ -25,7 +27,6 @@ public:
 	double xPos;
 	double yPos;
 	double size;
-	Piece* selectedPiece;
 private:
 	void createSprite(VulkanResources* vulkan);
 

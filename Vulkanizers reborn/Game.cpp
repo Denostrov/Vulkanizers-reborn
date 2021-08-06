@@ -4,11 +4,14 @@
 Game::Game()
 	:lastFrameTime{ 0 }, deltaTime{ 0 }, fpsFramesRendered{ 0 }, fpsTimePassed{ 0.0f },
 	updateTime{ 0.0f }, gameOver{ false }, soundEngine{ std::make_unique<SoundEngine>() }, vulkan{ std::make_unique<VulkanResources>(this) },
-	cursor{ vulkan.get(), Settings::CURSOR_SIZE }, random{}, gen{ random() }, camera{ glm::vec3(0.0f, -2.0f, 0.0f), 1.0f }, steps{ 100.0f }, sphereSize{ 0.15f }
+	cursor{ vulkan.get(), Settings::CURSOR_SIZE }, random{}, gen{ random() }, camera{ glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 1.0f }, steps{ 100.0f }, sphereSize{ 0.15f },
+	cursorEnabled{ true }
 {
 
 	//get window pointer from vulkan
 	window = vulkan->window;
+
+	disableCursor();
 
 	//reset input buffers
 	std::fill_n(keysPressed, 512, false);
@@ -51,27 +54,27 @@ void Game::start()
 
 			if (keysHeld[GLFW_KEY_W])
 			{
-				camera.position.z -= 0.01f;
+				camera.position += 0.01f * camera.direction;
 			}
 			if (keysHeld[GLFW_KEY_S])
 			{
-				camera.position.z += 0.01f;
+				camera.position -= 0.01f * camera.direction;
 			}
 			if (keysHeld[GLFW_KEY_A])
 			{
-				camera.position.x -= 0.01f;
+				camera.position -= 0.01f * camera.right;
 			}
 			if (keysHeld[GLFW_KEY_D])
 			{
-				camera.position.x += 0.01f;
+				camera.position += 0.01f * camera.right;
 			}
 			if (keysHeld[GLFW_KEY_LEFT_SHIFT])
 			{
-				camera.position.y -= 0.01f;
+				camera.position += 0.01f * camera.up;
 			}
 			if (keysHeld[GLFW_KEY_LEFT_CONTROL])
 			{
-				camera.position.y += 0.01f;
+				camera.position -= 0.01f * camera.up;
 			}
 			if (keysHeld[GLFW_KEY_UP])
 			{
@@ -88,6 +91,17 @@ void Game::start()
 			if (keysHeld[GLFW_KEY_E])
 			{
 				sphereSize += 0.01f * 0.01f;
+			}
+			if (keysPressed[GLFW_KEY_SPACE])
+			{
+				if (cursorEnabled)
+				{
+					disableCursor();
+				}
+				else
+				{
+					enableCursor();
+				}
 			}
 
 			/*if (keysPressed[GLFW_KEY_SPACE])
@@ -171,8 +185,11 @@ void Game::processInput()
 
 	updateKeyStates();
 
-	//update cursor position
-	cursor.update(window);
+	if (cursorEnabled)
+	{
+		//update cursor position
+		cursor.update(window);
+	}
 
 	//close the program
 	if (keysPressed[GLFW_KEY_ESCAPE])
@@ -257,6 +274,20 @@ void Game::resetGame()
 	soundEngine->stopMusic(0);
 	soundEngine->startMusic(0);
 	gameOver = false;
+}
+
+void Game::enableCursor()
+{
+	cursor = Cursor(vulkan.get(), Settings::CURSOR_SIZE);
+	cursorEnabled = true;
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+}
+
+void Game::disableCursor()
+{
+	cursor = Cursor();
+	cursorEnabled = false;
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 //make new sprites after pool was cleared
