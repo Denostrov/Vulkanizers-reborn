@@ -27,6 +27,9 @@ public:
 	double xPos;
 	double yPos;
 	double size;
+	double prevXPos;
+	double prevYPos;
+	float sensitivity;
 private:
 	void createSprite(VulkanResources* vulkan);
 

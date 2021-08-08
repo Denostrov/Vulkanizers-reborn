@@ -1,13 +1,13 @@
 #include "Cursor.h"
 
 Cursor::Cursor()
-	:xPos{ 0.0 }, yPos{ 0.0 }, size{ 0.0 }
+	:xPos{ 0.0 }, yPos{ 0.0 }, size{ 0.0 }, prevXPos{ 0.0 }, prevYPos{ 0.0 }, sensitivity{ 0.05f }
 {
 
 }
 
 Cursor::Cursor(VulkanResources* vulkan, float size)
-	:xPos{ 0.0 }, yPos{ 0.0 }, size{ size }
+	: xPos{ 0.0 }, yPos{ 0.0 }, size{ size }, prevXPos{ 0.0 }, prevYPos{ 0.0 }, sensitivity{ 0.05f }
 {
 	assert(vulkan && "created cursor with nullptr vulkan");
 	createSprite(vulkan);
@@ -20,20 +20,29 @@ void Cursor::createSprite(VulkanResources* vulkan)
 
 void Cursor::update(GLFWwindow* window)
 {
+	prevXPos = xPos;
+	prevYPos = yPos;
+
 	//poll cursor position
 	double newXPos = 0.0, newYPos = 0.0;
 	glfwGetCursorPos(window, &newXPos, &newYPos);
 
 	//convert screen coords to (-1, 1) range
-	newXPos = newXPos * 2.0 / sprite.vulkan->swapChainExtent.width - 1.0;
-	newYPos = -newYPos * 2.0 / sprite.vulkan->swapChainExtent.height + 1.0;
+	if (sprite.vulkan)
+	{
+		newXPos = newXPos * 2.0 / sprite.vulkan->swapChainExtent.width - 1.0;
+		newYPos = -newYPos * 2.0 / sprite.vulkan->swapChainExtent.height + 1.0;
+	}
 
 	//move sprite so top left part of cursor is at the center
 	if (newXPos != xPos || newYPos != yPos)
 	{
 		xPos = newXPos;
 		yPos = newYPos;
-		sprite.moveSprite((float)(xPos + size / 800.0), (float)(yPos - size / 800.0));
+		if (sprite.vulkan)
+		{
+			sprite.moveSprite((float)(xPos + size / 800.0), (float)(yPos - size / 800.0));
+		}
 	}
 }
 

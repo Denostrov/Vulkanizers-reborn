@@ -15,6 +15,8 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
+constexpr float pi = 3.141593f;
+
 enum class Rotations
 {
 	eNorth, eEast, eSouth, eWest

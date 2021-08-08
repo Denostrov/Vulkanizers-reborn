@@ -12,6 +12,7 @@ Game::Game()
 	window = vulkan->window;
 
 	disableCursor();
+	cursor.update(window);
 
 	//reset input buffers
 	std::fill_n(keysPressed, 512, false);
@@ -104,6 +105,30 @@ void Game::start()
 				}
 			}
 
+			float newYaw = float(cursor.xPos - cursor.prevXPos) * cursor.sensitivity + camera.yaw;
+			float newPitch = float(cursor.yPos - cursor.prevYPos) * cursor.sensitivity + camera.pitch;
+
+			if (newPitch > 89.5f)
+			{
+				newPitch = 89.5f;
+			}
+			else if (newPitch < -89.5f)
+			{
+				newPitch = -89.5f;
+			}
+			if (newYaw > 180.0f)
+			{
+				newYaw -= 360.0f;
+			}
+			else if (newYaw < -180.0f)
+			{
+				newYaw += 360.0f;
+			}
+			if (!cursorEnabled)
+			{
+				camera.orient(newPitch, newYaw);
+			}
+
 			/*if (keysPressed[GLFW_KEY_SPACE])
 			{
 				vulkan->recreateSwapChain();
@@ -185,11 +210,8 @@ void Game::processInput()
 
 	updateKeyStates();
 
-	if (cursorEnabled)
-	{
-		//update cursor position
-		cursor.update(window);
-	}
+	//update cursor position
+	cursor.update(window);
 
 	//close the program
 	if (keysPressed[GLFW_KEY_ESCAPE])
@@ -288,6 +310,7 @@ void Game::disableCursor()
 	cursor = Cursor();
 	cursorEnabled = false;
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	cursor.update(window);
 }
 
 //make new sprites after pool was cleared

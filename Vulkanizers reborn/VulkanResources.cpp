@@ -989,7 +989,7 @@ void VulkanResources::updateCommandBuffer(uint32_t imageIndex)
 	pushConstantData.push_back(glm::vec4(game->camera.right, 0.0f));
 	pushConstantData.push_back(glm::vec4(game->camera.up, 0.0f));
 	pushConstantData.push_back(glm::vec4(game->camera.direction, 0.0f));
-	commandBuffers[imageIndex].pushConstants(graphicsPipelinesData[1].layout, vk::ShaderStageFlagBits::eFragment, 0, sizeof(glm::vec4) * pushConstantData.size(), pushConstantData.data());
+	commandBuffers[imageIndex].pushConstants(graphicsPipelinesData[1].layout, vk::ShaderStageFlagBits::eFragment, 0, (uint32_t)(sizeof(glm::vec4) * pushConstantData.size()), pushConstantData.data());
 
 	commandBuffers[imageIndex].draw(4, 1, 0, 0);
 
