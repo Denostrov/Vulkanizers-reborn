@@ -85,6 +85,7 @@ struct PipelineCreateData
 };
 
 static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+static void mouseWheelMoveCallback(GLFWwindow* window, double xOffset, double yOffset);
 std::vector<char> readFile(std::string const& filename);
 
 class VulkanResources

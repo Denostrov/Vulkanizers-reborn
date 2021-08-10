@@ -27,8 +27,16 @@ void Cursor::deleteSprite()
 void Cursor::disable(GLFWwindow* window)
 {
 	deleteSprite();
+	//prevent glfw bug causing camera jump
 	update(window);
 	update(window);
+}
+
+void Cursor::enable(VulkanResources* vulkan)
+{
+	createSprite(vulkan);
+	update(vulkan->window);
+	update(vulkan->window);
 }
 
 void Cursor::update(GLFWwindow* window)

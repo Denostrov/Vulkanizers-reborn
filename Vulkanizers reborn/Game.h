@@ -38,6 +38,7 @@ public:
 	float steps;
 	float sphereSize;
 	bool cursorEnabled;
+	double mWheelMovement;
 private:
 	void calculateDeltaTime();
 	//check window resizing, update cursor/keys

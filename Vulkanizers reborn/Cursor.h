@@ -26,6 +26,7 @@ public:
 	void createSprite(VulkanResources* vulkan);
 	void deleteSprite();
 	void disable(GLFWwindow* window);
+	void enable(VulkanResources* vulkan);
 
 	double xPos;
 	double yPos;

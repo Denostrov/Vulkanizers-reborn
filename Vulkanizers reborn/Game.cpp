@@ -5,7 +5,7 @@ Game::Game()
 	:lastFrameTime{ 0 }, deltaTime{ 0 }, fpsFramesRendered{ 0 }, fpsTimePassed{ 0.0f },
 	updateTime{ 0.0f }, gameOver{ false }, soundEngine{ std::make_unique<SoundEngine>() }, vulkan{ std::make_unique<VulkanResources>(this) },
 	cursor{ vulkan.get(), Settings::CURSOR_SIZE }, random{}, gen{ random() }, camera{ glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 1.0f }, steps{ 100.0f }, sphereSize{ 0.15f },
-	cursorEnabled{ true }
+	cursorEnabled{ true }, mWheelMovement{ 0.0 }
 {
 
 	//get window pointer from vulkan
@@ -102,6 +102,15 @@ void Game::start()
 				{
 					enableCursor();
 				}
+			}
+			if (mWheelMovement != 0.0)
+			{
+				camera.focalLength += (float)mWheelMovement * 0.05f;
+				if (camera.focalLength <= 0.0f)
+				{
+					camera.focalLength = 0.0f;
+				}
+				mWheelMovement = 0.0;
 			}
 
 			float newYaw = float(cursor.xPos - cursor.prevXPos) * cursor.sensitivity + camera.yaw;
@@ -250,7 +259,7 @@ void Game::resetGame()
 void Game::enableCursor()
 {
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-	cursor.createSprite(vulkan.get());
+	cursor.enable(vulkan.get());
 	cursorEnabled = true;
 }
 

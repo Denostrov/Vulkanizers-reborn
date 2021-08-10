@@ -135,6 +135,7 @@ void VulkanResources::initWindow()
 
 	//sets bool in game that window was resized
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+	glfwSetScrollCallback(window, mouseWheelMoveCallback);
 }
 
 //loader for vulkan functions
@@ -1119,6 +1120,12 @@ static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 {
 	auto program = reinterpret_cast<VulkanResources*>(glfwGetWindowUserPointer(window));
 	program->game->setWindowWasResized();
+}
+
+static void mouseWheelMoveCallback(GLFWwindow* window, double xOffset, double yOffset)
+{
+	auto program = reinterpret_cast<VulkanResources*>(glfwGetWindowUserPointer(window));
+	program->game->mWheelMovement = yOffset;
 }
 
 bool isDeviceSuitable(vk::PhysicalDevice device, vk::SurfaceKHR surface, QueueFamilyIndices const& indices)
