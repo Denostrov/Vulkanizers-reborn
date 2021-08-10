@@ -10,12 +10,25 @@ Cursor::Cursor(VulkanResources* vulkan, float size)
 	: xPos{ 0.0 }, yPos{ 0.0 }, size{ size }, prevXPos{ 0.0 }, prevYPos{ 0.0 }, sensitivity{ 0.05f }
 {
 	assert(vulkan && "created cursor with nullptr vulkan");
+	update(vulkan->window);
 	createSprite(vulkan);
 }
 
 void Cursor::createSprite(VulkanResources* vulkan)
 {
 	sprite = GraphicsComponent{ vulkan, (float)(xPos + size / 800.0), (float)(yPos - size / 800.0), SpriteLayers::eGUI, (float)(size / 800.0), (float)(size / 800.0), 0.0f, vulkan->textureSampler, &vulkan->textures[13] };
+}
+
+void Cursor::deleteSprite()
+{
+	sprite = GraphicsComponent();
+}
+
+void Cursor::disable(GLFWwindow* window)
+{
+	deleteSprite();
+	update(window);
+	update(window);
 }
 
 void Cursor::update(GLFWwindow* window)

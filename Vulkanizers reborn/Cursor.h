@@ -23,6 +23,9 @@ public:
 
 	void recreateSprite() { createSprite(sprite.vulkan); }	//remake the graphics component
 	void update(GLFWwindow* window);						//update position and move sprite
+	void createSprite(VulkanResources* vulkan);
+	void deleteSprite();
+	void disable(GLFWwindow* window);
 
 	double xPos;
 	double yPos;
@@ -31,8 +34,6 @@ public:
 	double prevYPos;
 	float sensitivity;
 private:
-	void createSprite(VulkanResources* vulkan);
-
 	GraphicsComponent sprite;
 };
 

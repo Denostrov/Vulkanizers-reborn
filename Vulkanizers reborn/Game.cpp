@@ -12,7 +12,6 @@ Game::Game()
 	window = vulkan->window;
 
 	disableCursor();
-	cursor.update(window);
 
 	//reset input buffers
 	std::fill_n(keysPressed, 512, false);
@@ -83,7 +82,7 @@ void Game::start()
 			}
 			if (keysHeld[GLFW_KEY_DOWN])
 			{
-				steps -= 0.01f * 10.0f;
+				steps -= 0.01f * 20.0f;
 			}
 			if (keysHeld[GLFW_KEY_Q])
 			{
@@ -107,7 +106,6 @@ void Game::start()
 
 			float newYaw = float(cursor.xPos - cursor.prevXPos) * cursor.sensitivity + camera.yaw;
 			float newPitch = float(cursor.yPos - cursor.prevYPos) * cursor.sensitivity + camera.pitch;
-
 			if (newPitch > 89.5f)
 			{
 				newPitch = 89.5f;
@@ -129,55 +127,6 @@ void Game::start()
 				camera.orient(newPitch, newYaw);
 			}
 
-			/*if (keysPressed[GLFW_KEY_SPACE])
-			{
-				vulkan->recreateSwapChain();
-			}
-			if (keysPressed[GLFW_MOUSE_BUTTON_LEFT] && whitesMove)
-			{
-				int cursorTile = convertXToColumn(cursor.xPos) + 8 * convertYToRow(cursor.yPos);
-				if (!pieceSelected)
-				{
-				selectingPiece:
-
-					if ((cursorTile >= 0 && cursorTile <= 63) && area->board[cursorTile] &&
-						((whitesMove && area->board[cursorTile]->getColor() == TeamColors::eWhite) || (!whitesMove && area->board[cursorTile]->getColor() == TeamColors::eBlack)))
-					{
-						selectPiece(area->board[cursorTile], cursorTile);
-					}
-					else
-					{
-						selectPiece(nullptr, -1);
-					}
-				}
-				else
-				{
-					bool movedPiece = false;
-					for (auto& tile : highlights)
-					{
-						if (tile.row == (cursorTile / 8) && tile.column == (cursorTile % 8))
-						{
-							movePiece(cursor.selectedPiece->getColumn() + 8 * cursor.selectedPiece->getRow(), cursorTile);
-							movedPiece = true;
-							selectPiece(nullptr, -1);
-							whitesMove = !whitesMove;
-							break;
-						}
-					}
-					if (!movedPiece)
-					{
-						goto selectingPiece;
-					}
-				}
-			}
-			if (!whitesMove)
-			{
-				moveAI();
-			}
-			if (!gameOver)
-			{
-				update();
-			}*/
 			updateTime -= 0.01f;
 			timesUpdated++;
 			//cap updates if rendering needs to catch up
@@ -300,17 +249,16 @@ void Game::resetGame()
 
 void Game::enableCursor()
 {
-	cursor = Cursor(vulkan.get(), Settings::CURSOR_SIZE);
-	cursorEnabled = true;
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+	cursor.createSprite(vulkan.get());
+	cursorEnabled = true;
 }
 
 void Game::disableCursor()
 {
-	cursor = Cursor();
-	cursorEnabled = false;
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	cursor.update(window);
+	cursor.disable(window);
+	cursorEnabled = false;
 }
 
 //make new sprites after pool was cleared
