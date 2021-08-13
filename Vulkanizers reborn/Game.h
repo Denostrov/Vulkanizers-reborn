@@ -36,7 +36,10 @@ public:
 
 	Camera camera;
 	float steps;
-	float sphereSize;
+	std::vector<float> fractalData;
+	float iterations;
+	int sceneID;
+
 	bool cursorEnabled;
 	double mWheelMovement;
 private:
@@ -48,6 +51,8 @@ private:
 	void resetGame();
 	void enableCursor();
 	void disableCursor();
+
+	void loadScene(int id);
 
 	bool keysPressed[512];
 	bool keysHeld[512];

@@ -985,11 +985,11 @@ void VulkanResources::updateCommandBuffer(uint32_t imageIndex)
 	commandBuffers[imageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipelinesData[1].pipeline);
 
 	std::vector<glm::vec4> pushConstantData;
-	pushConstantData.push_back(glm::vec4(swapChainExtent.width, swapChainExtent.height, game->steps, game->sphereSize));
+	pushConstantData.push_back(glm::vec4(swapChainExtent.width, swapChainExtent.height, game->steps, game->fractalData[0]));
 	pushConstantData.push_back(glm::vec4(game->camera.position, game->camera.focalLength));
-	pushConstantData.push_back(glm::vec4(game->camera.right, 0.0f));
-	pushConstantData.push_back(glm::vec4(game->camera.up, 0.0f));
-	pushConstantData.push_back(glm::vec4(game->camera.direction, 0.0f));
+	pushConstantData.push_back(glm::vec4(game->camera.right, game->sceneID));
+	pushConstantData.push_back(glm::vec4(game->camera.up, game->fractalData[1]));
+	pushConstantData.push_back(glm::vec4(game->camera.direction, game->iterations));
 	commandBuffers[imageIndex].pushConstants(graphicsPipelinesData[1].layout, vk::ShaderStageFlagBits::eFragment, 0, (uint32_t)(sizeof(glm::vec4) * pushConstantData.size()), pushConstantData.data());
 
 	commandBuffers[imageIndex].draw(4, 1, 0, 0);
