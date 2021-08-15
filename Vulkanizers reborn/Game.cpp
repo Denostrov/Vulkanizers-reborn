@@ -5,7 +5,7 @@ Game::Game()
 	:lastFrameTime{ 0 }, deltaTime{ 0 }, fpsFramesRendered{ 0 }, fpsTimePassed{ 0.0f },
 	updateTime{ 0.0f }, gameOver{ false }, soundEngine{ std::make_unique<SoundEngine>() }, vulkan{ std::make_unique<VulkanResources>(this) },
 	cursor{ vulkan.get(), Settings::CURSOR_SIZE }, random{}, gen{ random() }, camera{ glm::vec3(2.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), 1.0f }, steps{ 100.0f }, fractalData{ 0.15f, 0.0f },
-	iterations{ 1.0f }, sceneID{ 0 }, cursorEnabled{ true }, mWheelMovement{ 0.0 }
+	iterations{ 1.0f }, sceneID{ 0 }, juliaC{ 0.0f, 0.0f, 0.0f, 0.0f }, cursorEnabled{ true }, mWheelMovement{ 0.0 }
 {
 
 	//get window pointer from vulkan
@@ -54,31 +54,31 @@ void Game::start()
 
 			if (keysHeld[GLFW_KEY_W])
 			{
-				camera.position += 0.01f * camera.direction * 0.5f;
+				camera.position += 0.01f * camera.direction * camera.speed;
 			}
 			if (keysHeld[GLFW_KEY_S])
 			{
-				camera.position -= 0.01f * camera.direction * 0.5f;
+				camera.position -= 0.01f * camera.direction * camera.speed;
 			}
 			if (keysHeld[GLFW_KEY_A])
 			{
-				camera.position -= 0.01f * camera.right * 0.5f;
+				camera.position -= 0.01f * camera.right * camera.speed;
 			}
 			if (keysHeld[GLFW_KEY_D])
 			{
-				camera.position += 0.01f * camera.right * 0.5f;
+				camera.position += 0.01f * camera.right * camera.speed;
 			}
 			if (keysHeld[GLFW_KEY_LEFT_SHIFT])
 			{
-				camera.position += 0.01f * camera.up * 0.5f;
+				camera.position += 0.01f * camera.up * camera.speed;
 			}
 			if (keysHeld[GLFW_KEY_LEFT_CONTROL])
 			{
-				camera.position -= 0.01f * camera.up * 0.5f;
+				camera.position -= 0.01f * camera.up * camera.speed;
 			}
 			if (keysHeld[GLFW_KEY_UP])
 			{
-				steps += 0.01f * 10.0f;
+				steps += 0.01f * 20.0f;
 			}
 			if (keysHeld[GLFW_KEY_DOWN])
 			{
@@ -94,11 +94,51 @@ void Game::start()
 			}
 			if (keysHeld[GLFW_KEY_Z])
 			{
-				fractalData[1] -= 0.01f;
+				fractalData[1] -= 0.01f * 0.1f;
 			}
 			if (keysHeld[GLFW_KEY_X])
 			{
-				fractalData[1] += 0.01f;
+				fractalData[1] += 0.01f * 0.1f;
+			}
+			if (keysHeld[GLFW_KEY_F])
+			{
+				camera.speed *= (1.0f - 0.01f);
+			}
+			if (keysHeld[GLFW_KEY_G])
+			{
+				camera.speed *= (1.0f + 0.01f);
+			}
+			if (keysHeld[GLFW_KEY_1])
+			{
+				juliaC.x -= 0.01f * 0.1f;
+			}
+			if (keysHeld[GLFW_KEY_2])
+			{
+				juliaC.x += 0.01f * 0.1f;
+			}
+			if (keysHeld[GLFW_KEY_3])
+			{
+				juliaC.y -= 0.01f * 0.1f;
+			}
+			if (keysHeld[GLFW_KEY_4])
+			{
+				juliaC.y += 0.01f * 0.1f;
+			}
+			if (keysHeld[GLFW_KEY_5])
+			{
+				juliaC.z -= 0.01f * 0.1f;
+			}
+			if (keysHeld[GLFW_KEY_6])
+			{
+				juliaC.z += 0.01f * 0.1f;
+			}
+			if (keysHeld[GLFW_KEY_7])
+			{
+				juliaC.w -= 0.01f * 0.1f;
+			}
+			if (keysHeld[GLFW_KEY_8])
+			{
+				juliaC.w += 0.01f * 0.1f;
 			}
 			if (keysPressed[GLFW_KEY_LEFT])
 			{
@@ -314,6 +354,9 @@ void Game::loadScene(int id)
 		break;
 	case 1:
 		fractalData = { 8.0f, 0.0f };
+		break;
+	case 2:
+		fractalData = { 2.0f, 0.0f };
 		break;
 	default:
 		break;

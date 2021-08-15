@@ -1,14 +1,14 @@
 #include "Camera.h"
 
 Camera::Camera()
-	:position{ glm::vec3(0.0f, 0.0f, 0.0f) }, focalLength{ 1.0 }, pitch{ 0.0f }, yaw{ 0.0f }
+	:position{ glm::vec3(0.0f, 0.0f, 0.0f) }, focalLength{ 1.0 }, pitch{ 0.0f }, yaw{ 0.0f }, speed{ 0.5f }
 {
 	updateDirection();
 	calculateUpAndRight();
 }
 
 Camera::Camera(glm::vec3 const& position, glm::vec3 const& target, float focalLength)
-	: position{ position }, focalLength{ focalLength }, direction{ glm::normalize(target - position) }
+	: position{ position }, focalLength{ focalLength }, direction{ glm::normalize(target - position) }, speed{ 0.5f }
 {
 	calculateEulerAngles();
 	calculateUpAndRight();

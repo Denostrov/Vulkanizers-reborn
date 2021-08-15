@@ -15,6 +15,7 @@ public:
 	float focalLength;
 	float pitch;
 	float yaw;
+	float speed;
 	glm::vec3 position;
 	glm::vec3 direction;
 	glm::vec3 right;

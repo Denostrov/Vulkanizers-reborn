@@ -39,6 +39,7 @@ public:
 	std::vector<float> fractalData;
 	float iterations;
 	int sceneID;
+	glm::vec4 juliaC;
 
 	bool cursorEnabled;
 	double mWheelMovement;

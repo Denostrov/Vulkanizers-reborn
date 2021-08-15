@@ -565,7 +565,7 @@ void VulkanResources::createGraphicsPipelines()
 
 	graphicsPipelinesData[1].descriptorSetLayout = nullptr;
 
-	pushConstantRange = vk::PushConstantRange(vk::ShaderStageFlagBits::eFragment, 0, 20 * sizeof(float));
+	pushConstantRange = vk::PushConstantRange(vk::ShaderStageFlagBits::eFragment, 0, 24 * sizeof(float));
 
 	pipelineLayoutInfo = vk::PipelineLayoutCreateInfo({}, nullptr, pushConstantRange);
 
@@ -990,6 +990,7 @@ void VulkanResources::updateCommandBuffer(uint32_t imageIndex)
 	pushConstantData.push_back(glm::vec4(game->camera.right, game->sceneID));
 	pushConstantData.push_back(glm::vec4(game->camera.up, game->fractalData[1]));
 	pushConstantData.push_back(glm::vec4(game->camera.direction, game->iterations));
+	pushConstantData.push_back(game->juliaC);
 	commandBuffers[imageIndex].pushConstants(graphicsPipelinesData[1].layout, vk::ShaderStageFlagBits::eFragment, 0, (uint32_t)(sizeof(glm::vec4) * pushConstantData.size()), pushConstantData.data());
 
 	commandBuffers[imageIndex].draw(4, 1, 0, 0);
