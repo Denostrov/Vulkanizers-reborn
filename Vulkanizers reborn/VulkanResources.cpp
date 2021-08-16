@@ -1139,6 +1139,7 @@ bool isDeviceSuitable(vk::PhysicalDevice device, vk::SurfaceKHR surface, QueueFa
 	std::cout << deviceProperties.limits.maxMemoryAllocationCount << " max memory allocation count\n";
 	std::cout << deviceProperties.limits.maxBoundDescriptorSets << " max bound descriptor sets\n";
 	std::cout << deviceProperties.limits.maxPushConstantsSize << " max push constants size\n";
+	std::cout << deviceProperties.limits.maxComputeSharedMemorySize << " max compute shader memory size\n";
 	std::cout << deviceProperties.limits.maxImageDimension2D << " max 2D image dimension\n";
 	std::cout << deviceProperties.vendorID << " vendor id\n";
 	if (deviceProperties.vendorID == 0x8086)

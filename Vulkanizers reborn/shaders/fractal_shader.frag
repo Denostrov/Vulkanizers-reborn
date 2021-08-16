@@ -13,12 +13,45 @@ layout( push_constant ) uniform constants
 	vec4 juliaC;
 } pushConstants;
 
+float qLength2(in vec4 q) { return dot(q, q); }
+
+vec4 qPower(vec4 q, float power)
+{
+	float allLength = sqrt(qLength2(q));
+	float pureLength = sqrt(dot(q.yzw, q.yzw));
+	float phi;
+	vec3 unit;
+	if (q.x >= allLength || allLength <= 0.0001)
+	{
+		phi = 0.0;
+	}
+	else
+	{
+		phi = acos(q.x / allLength);
+	}
+	if (pureLength <= 0.0001)
+	{
+		unit = vec3(0.0, 0.0, 0.0);
+	}
+	else
+	{
+		unit = q.yzw / pureLength;
+	}
+	float powLength = pow(allLength, power);
+	return vec4(powLength * cos(power * phi), unit * powLength * sin(power * phi));
+}
+
 vec4 qSquare(vec4 q)
 {
 	return vec4(q.x * q.x - q.y * q.y - q.z * q.z - q.w * q.w, 2.0 * q.x * q.yzw);
 }
 
-float qLength2(in vec4 q) { return dot(q, q); }
+vec4 qCube(vec4 q)
+{
+	vec4 q2 = q*q;
+	return vec4(q.x * (q2.x - 3.0*(q2.y + q2.z + q2.w)),
+							q.yzw * (3.0 * q2.x - q2.y - q2.z - q2.w));
+}
 
 float DE_spheres(vec3 point)
 {
@@ -46,7 +79,23 @@ float DE_mandelbulb(vec3 point)
 	return 0.25 * log(m) * sqrt(m) / dz;
 }
 
-float DE_julia(vec3 point)
+float DE_juliaExact(vec3 point)
+{
+	int iterations;
+	vec4 z = vec4(point, pushConstants.cameraVertical.w);
+	float dz2 = 1.0;
+	float m2 = 0.0;
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		dz2 = pushConstants.data.w * pushConstants.data.w * qLength2(qPower(z, pushConstants.data.w - 1.0)) * dz2;
+		z = qPower(z, pushConstants.data.w) + pushConstants.juliaC;
+		m2 = qLength2(z);
+		if (m2 > 512.0) break;
+	}
+	return 0.25 * log(m2)*sqrt(m2/dz2);
+}
+
+float DE_juliaSquare(vec3 point)
 {
 	int iterations;
 	vec4 z = vec4(point, pushConstants.cameraVertical.w);
@@ -56,6 +105,22 @@ float DE_julia(vec3 point)
 	{
 		dz2 = 4.0 * qLength2(z) * dz2;
 		z = qSquare(z) + pushConstants.juliaC;
+		m2 = qLength2(z);
+		if (m2 > 512.0) break;
+	}
+	return 0.25 * log(m2)*sqrt(m2/dz2);
+}
+
+float DE_juliaCube(vec3 point)
+{
+	int iterations;
+	vec4 z = vec4(point, pushConstants.cameraVertical.w);
+	float dz2 = 1.0;
+	float m2 = 0.0;
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		dz2 = 9.0 * qLength2(qSquare(z)) * dz2;
+		z = qCube(z) + pushConstants.juliaC;
 		m2 = qLength2(z);
 		if (m2 > 512.0) break;
 	}
@@ -76,7 +141,11 @@ float trace(vec3 from, vec3 direction)
 							break;
 			case 1:	distance = DE_mandelbulb(p);
 							break;
-			case 2:	distance = DE_julia(p);
+			case 2:	distance = DE_juliaExact(p);
+							break;
+			case 3:	distance = DE_juliaSquare(p);
+							break;
+			case 4:	distance = DE_juliaCube(p);
 							break;
 			default:	distance = 1000.0;
 							break;

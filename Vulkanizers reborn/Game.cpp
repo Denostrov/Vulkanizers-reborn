@@ -351,12 +351,26 @@ void Game::loadScene(int id)
 	{
 	case 0:
 		fractalData = { 0.15f, 0.0f };
+		steps = 100.0f;
 		break;
 	case 1:
 		fractalData = { 8.0f, 0.0f };
+		iterations = 4.0f;
 		break;
 	case 2:
-		fractalData = { 2.0f, 0.0f };
+		fractalData = { 4.0f, 0.0f };
+		iterations = 15.0f;
+		juliaC = { -0.08f, 0.8f, -0.3f, 0.0f };
+		break;
+	case 3:
+		fractalData = { 0.0f, 0.0f };
+		iterations = 20.0f;
+		juliaC = glm::vec4(-2.0f, 6.0f, 15.0f, -6.0f) / 22.0f;
+		break;
+	case 4:
+		fractalData = { 0.0f, 0.0f };
+		iterations = 24.0f;
+		juliaC = glm::vec4(-2.0f, 6.0f, 15.0f, -6.0f) / 22.0f;
 		break;
 	default:
 		break;
