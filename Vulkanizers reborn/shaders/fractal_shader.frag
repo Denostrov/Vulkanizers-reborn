@@ -13,6 +13,8 @@ layout( push_constant ) uniform constants
 	vec4 juliaC;
 } pushConstants;
 
+const float rayPrecision = 0.0001;
+
 float qLength2(in vec4 q) { return dot(q, q); }
 
 vec4 qPower(vec4 q, float power)
@@ -53,6 +55,36 @@ vec4 qCube(vec4 q)
 							q.yzw * (3.0 * q2.x - q2.y - q2.z - q2.w));
 }
 
+vec2 clipPlane(vec3 p, vec3 dir, vec4 plane)
+{
+	float intersect = dot(dir, plane.xyz);
+	float projection = dot(plane.xyz * plane.w - p, plane.xyz);
+	//above the plane
+	if (projection < 0.0)
+	{
+		if (intersect < 0.0)
+		{
+			return vec2(projection / intersect, 10000.0);
+		}
+		else
+		{
+			return vec2(10000.0, 0.0);
+		}
+	}
+	//below the plane
+	else
+	{
+		if (intersect > 0.0)
+		{
+			return vec2(0.0, projection/intersect);
+		}
+		else
+		{
+			return vec2(0.0, 10000.0);
+		}
+	}
+}
+
 float DE_spheres(vec3 point)
 {
 	vec3 p = abs(mod(point - 1.0, 2.0) - 1.0);
@@ -84,14 +116,18 @@ float DE_juliaExact(vec3 point)
 	int iterations;
 	vec4 z = vec4(point, pushConstants.cameraVertical.w);
 	float dz2 = 1.0;
+	float prevm2 = 0.0;
 	float m2 = 0.0;
 	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
 	{
 		dz2 = pushConstants.data.w * pushConstants.data.w * qLength2(qPower(z, pushConstants.data.w - 1.0)) * dz2;
 		z = qPower(z, pushConstants.data.w) + pushConstants.juliaC;
+		prevm2 = m2;
 		m2 = qLength2(z);
-		if (m2 > 512.0) break;
+		if (m2 > 512000.0) break;
 	}
+	if (abs(m2 - prevm2) < 0.5 && prevm2 != 0.0) return 0.0; //convergence
+	if (abs(m2 - prevm2) > 0.5 && m2 < 512.0 && iterations >= 2) return 0.0; //oscillation
 	return 0.25 * log(m2)*sqrt(m2/dz2);
 }
 
@@ -99,15 +135,21 @@ float DE_juliaSquare(vec3 point)
 {
 	int iterations;
 	vec4 z = vec4(point, pushConstants.cameraVertical.w);
+	if (4.0 * qLength2(z) < 0.000001) return 0.001;
 	float dz2 = 1.0;
+	float prevm2 = 0.0;
 	float m2 = 0.0;
 	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
 	{
 		dz2 = 4.0 * qLength2(z) * dz2;
 		z = qSquare(z) + pushConstants.juliaC;
+		prevm2 = m2;
 		m2 = qLength2(z);
 		if (m2 > 512.0) break;
+		if (dz2 < 0.0000001) break;
 	}
+	if (abs(m2 - prevm2) < 0.25 && prevm2 != 0.0) return 0.0; //convergence
+	if (abs(m2 - prevm2) > 0.25 && m2 < 512.0 && iterations >= 2) return 0.0; //oscillation
 	return 0.25 * log(m2)*sqrt(m2/dz2);
 }
 
@@ -115,15 +157,21 @@ float DE_juliaCube(vec3 point)
 {
 	int iterations;
 	vec4 z = vec4(point, pushConstants.cameraVertical.w);
+	if (9.0 * qLength2(qSquare(z)) < 0.00001) return 0.01;
 	float dz2 = 1.0;
 	float m2 = 0.0;
+	float prevm2 = 0.0;
 	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
 	{
 		dz2 = 9.0 * qLength2(qSquare(z)) * dz2;
 		z = qCube(z) + pushConstants.juliaC;
+		prevm2 = m2;
 		m2 = qLength2(z);
 		if (m2 > 512.0) break;
+		if (dz2 < 0.0000001) break;
 	}
+	if (abs(m2 - prevm2) < 0.5 && prevm2 != 0.0) return 0.0; //convergence
+	if (abs(m2 - prevm2) > 0.5 && m2 < 512.0 && iterations >= 1) return 0.0; //oscillation
 	return 0.25 * log(m2)*sqrt(m2/dz2);
 }
 
@@ -132,6 +180,18 @@ float trace(vec3 from, vec3 direction)
 	float totalDistance = 0.0;
 	int steps;
 	float distance;
+	vec2 planeDistances = vec2(0.0, 10000.0); //x is min, y is max
+	switch(int(pushConstants.cameraHorizontal.w))
+	{
+		case 2:	planeDistances = clipPlane(from, direction, vec4(0.0, 1.0, 0.0, 0.0));
+						break;
+		case 3:	planeDistances = clipPlane(from, direction, vec4(0.0, 1.0, 0.0, 0.0));
+						break;
+		case 4:	planeDistances = clipPlane(from, direction, vec4(0.0, 1.0, 0.0, 0.0));
+						break;
+		default:	break;
+	}
+	from += planeDistances.x * direction;
 	for (steps = 0; steps < int(pushConstants.data.z); steps++)
 	{
 		vec3 p = from + totalDistance * direction;
@@ -151,10 +211,17 @@ float trace(vec3 from, vec3 direction)
 							break;
 		}
 		totalDistance += distance;
-		if (distance < 0.0001) break;
+		if (distance < rayPrecision) break;
 		if (distance > 512.0) discard;
 	}
-	return 1.0-float(steps)/float(int(pushConstants.data.z));
+	if (totalDistance > planeDistances.y)
+	{
+		return 0.0;
+	}
+	else
+	{
+		return 1.0-float(steps)/float(int(pushConstants.data.z));
+	}
 }
 
 void main() 

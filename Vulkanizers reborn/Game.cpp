@@ -20,7 +20,7 @@ Game::Game()
 	soundEngine->loadSound("sounds/thud.wav");
 	soundEngine->loadSound("sounds/clang.wav");
 	soundEngine->loadMusic("sounds/violin.wav");
-	soundEngine->setMusicVolume(0, 10.0f);
+	soundEngine->setMusicVolume(0, 2.0f);
 }
 
 Game::~Game()
@@ -182,7 +182,7 @@ void Game::start()
 			}
 
 			float newYaw = float(cursor.xPos - cursor.prevXPos) * cursor.sensitivity + camera.yaw;
-			float newPitch = float(cursor.yPos - cursor.prevYPos) * cursor.sensitivity + camera.pitch;
+			float newPitch = -float(cursor.yPos - cursor.prevYPos) * cursor.sensitivity + camera.pitch;
 			if (newPitch > 89.5f)
 			{
 				newPitch = 89.5f;
@@ -359,18 +359,18 @@ void Game::loadScene(int id)
 		break;
 	case 2:
 		fractalData = { 4.0f, 0.0f };
-		iterations = 15.0f;
-		juliaC = { -0.08f, 0.8f, -0.3f, 0.0f };
+		iterations = 20.0f;
+		juliaC = { -0.2f, 0.4f, 0.1f, -0.423f };
 		break;
 	case 3:
 		fractalData = { 0.0f, 0.0f };
-		iterations = 20.0f;
-		juliaC = glm::vec4(-2.0f, 6.0f, 15.0f, -6.0f) / 22.0f;
+		iterations = 80.0f;
+		juliaC = { 0.0f, 0.0f, 0.0f, 0.0f };
 		break;
 	case 4:
 		fractalData = { 0.0f, 0.0f };
-		iterations = 24.0f;
-		juliaC = glm::vec4(-2.0f, 6.0f, 15.0f, -6.0f) / 22.0f;
+		iterations = 40.0f;
+		juliaC = { 0.0f, 0.0f, -1.08f, 0.0f };
 		break;
 	default:
 		break;

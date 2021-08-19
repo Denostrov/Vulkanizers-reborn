@@ -38,7 +38,7 @@ void Camera::updateDirection()
 void Camera::calculateUpAndRight()
 {
 	right = glm::normalize(glm::cross(direction, glm::vec3(0.0f, 1.0f, 0.0f)));
-	up = glm::normalize(glm::cross(direction, right));
+	up = glm::normalize(glm::cross(right, direction));
 }
 
 void Camera::calculateEulerAngles()
