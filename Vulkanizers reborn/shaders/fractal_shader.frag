@@ -5,12 +5,12 @@ layout(location = 0) out vec4 outColor;
 
 layout( push_constant ) uniform constants
 {
-	vec4 data; //viewport width, viewport height, steps, {sphere size, polynomial degree, julia power}
+	vec4 data; //viewport width, viewport height, steps, {sphere size, polynomial degree, julia power, s}
 	vec4 cameraPos; //4th argument is focal length
 	vec4 cameraHorizontal; //4th argument is scene id
-	vec4 cameraVertical; //4th argument is { _ , _, k projection}
+	vec4 cameraVertical; //4th argument is { _ , _, k projection, r}
 	vec4 cameraDirection; //4th argument is iterations
-	vec4 juliaC;
+	vec4 juliaC;	// {f}
 } pushConstants;
 
 const float rayPrecision = 0.0001;
@@ -99,7 +99,7 @@ float DE_mandelbulb(vec3 point)
 	float m = dot(w, w);
 	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
 	{
-		dz = pushConstants.data.w * pow(m, (pushConstants.data.w - 1.0) / 2.0)*dz;
+		dz = pushConstants.data.w * pow(m, (pushConstants.data.w - 1.0) / 2.0)*dz + 1.0;
 		float r = length(w);
 		float b = pushConstants.data.w * acos(w.y/r);
 		float a = pushConstants.data.w * atan(w.x, w.z);
@@ -175,6 +175,35 @@ float DE_juliaCube(vec3 point)
 	return 0.25 * log(m2)*sqrt(m2/dz2);
 }
 
+void boxFold(inout vec4 point)
+{
+	point.xyz = clamp(point.xyz, -1.0, 1.0)*2.0 - point.xyz;
+}
+
+void ballFold(float r2, inout vec4 point)
+{
+	float m2 = dot(point.xyz, point.xyz);
+	if (m2 < r2) point /= r2;
+	else if (m2 < 1.0) point /= m2;
+}
+
+float DE_mandelbox(vec3 point)
+{
+	int iterations;
+	vec4 w = vec4(point, 1.0);
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		boxFold(w);
+		w *= pushConstants.juliaC.w;
+		ballFold(pushConstants.cameraVertical.w, w);
+		w.xyz = pushConstants.data.w * w.xyz + point;
+		w.w = w.w * abs(pushConstants.data.w) + 1.0;
+		
+		if (dot(w.xyz, w.xyz) > 512.0) break;
+	}
+	return length(w.xyz)/abs(w.w);
+}
+
 float trace(vec3 from, vec3 direction)
 {
 	float totalDistance = 0.0;
@@ -206,6 +235,8 @@ float trace(vec3 from, vec3 direction)
 			case 3:	distance = DE_juliaSquare(p);
 							break;
 			case 4:	distance = DE_juliaCube(p);
+							break;
+			case 5:	distance = DE_mandelbox(p);
 							break;
 			default:	distance = 1000.0;
 							break;
