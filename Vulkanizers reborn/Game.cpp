@@ -87,11 +87,11 @@ void Game::start()
 			}
 			if (keysHeld[GLFW_KEY_Q])
 			{
-				fractalData[0] *= (1.0f - 0.01f * 0.1f);
+				fractalData[0] -= 0.01f * 0.1f;
 			}
 			if (keysHeld[GLFW_KEY_E])
 			{
-				fractalData[0] *= (1.0f + 0.01f * 0.1f);
+				fractalData[0] += 0.01f * 0.1f;
 			}
 			if (keysHeld[GLFW_KEY_Z])
 			{
@@ -375,11 +375,11 @@ void Game::loadScene(int id)
 		juliaC = { 0.0f, 0.0f, -1.08f, 0.0f };
 		break;
 	case 5:
-		fractalData = { 2.0f, 0.5f };
-		iterations = 20.0f;
+		fractalData = { -1.5f, 0.0f };
+		iterations = 25.0f;
 		juliaC = { 0.0f, 0.0f, 0.0f, 1.0f };
 		steps = 50.0f;
-		camera.position = glm::vec3(20.0f, 20.0f, 20.0f);
+		camera.position = glm::vec3(15.0f, 0.0f, 0.0f);
 		camera.point(glm::vec3(0.0f, 0.0f, 0.0f));
 		break;
 	default:

@@ -195,11 +195,11 @@ float DE_mandelbox(vec3 point)
 	{
 		boxFold(w);
 		w *= pushConstants.juliaC.w;
-		ballFold(pushConstants.cameraVertical.w, w);
+		ballFold(pushConstants.cameraVertical.w * pushConstants.cameraVertical.w, w);
 		w.xyz = pushConstants.data.w * w.xyz + point;
 		w.w = w.w * abs(pushConstants.data.w) + 1.0;
 		
-		if (dot(w.xyz, w.xyz) > 512.0) break;
+		if (dot(w.xyz, w.xyz) > 100000.0) break;
 	}
 	return length(w.xyz)/abs(w.w);
 }
