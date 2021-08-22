@@ -5,12 +5,12 @@ layout(location = 0) out vec4 outColor;
 
 layout( push_constant ) uniform constants
 {
-	vec4 data; //viewport width, viewport height, steps, {sphere size, polynomial degree, julia power, s}
+	vec4 data; //viewport width, viewport height, steps, {sphere size, polynomial degree, julia power, s, rot1}
 	vec4 cameraPos; //4th argument is focal length
 	vec4 cameraHorizontal; //4th argument is scene id
-	vec4 cameraVertical; //4th argument is { _ , _, k projection, r}
+	vec4 cameraVertical; //4th argument is { _ , _, k projection, r, rot2}
 	vec4 cameraDirection; //4th argument is iterations
-	vec4 juliaC;	// {f}
+	vec4 juliaC;	// {f, translate_scale}
 } pushConstants;
 
 const float rayPrecision = 0.0001;
@@ -183,8 +183,14 @@ void boxFold(inout vec4 point)
 void ballFold(float r2, inout vec4 point)
 {
 	float m2 = dot(point.xyz, point.xyz);
-	if (m2 < r2) point /= r2;
-	else if (m2 < 1.0) point /= m2;
+	point /= clamp(max(r2, m2), 0.0, 1.0);
+	//if (m2 < r2) point /= r2;
+	//else if (m2 < 1.0) point /= m2;
+}
+
+void absFold(vec3 c, inout vec4 point)
+{
+	point.xyz = abs(point.xyz - c) + c;
 }
 
 float DE_mandelbox(vec3 point)
@@ -202,6 +208,45 @@ float DE_mandelbox(vec3 point)
 		if (dot(w.xyz, w.xyz) > 100000.0) break;
 	}
 	return length(w.xyz)/abs(w.w);
+}
+
+float DE_juliabox(vec3 point)
+{
+	int iterations;
+	vec4 w = vec4(point, 1.0);
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		boxFold(w);
+		w *= pushConstants.juliaC.w;
+		ballFold(pushConstants.cameraVertical.w * pushConstants.cameraVertical.w, w);
+		w.xyz = pushConstants.data.w * w.xyz + pushConstants.juliaC.xyz;
+		w.w = w.w * abs(pushConstants.data.w) + 1.0;
+		
+		if (dot(w.xyz, w.xyz) > 100000.0) break;
+	}
+	return length(w.xyz)/abs(w.w);
+}
+
+float DE_butterweedHills(vec3 point)
+{
+	int iterations;
+	vec4 w = vec4(point, 1.0);
+	float firstSin = sin(pushConstants.data.w);
+	float firstCos = cos(pushConstants.data.w);
+	float secondSin = sin(pushConstants.cameraVertical.w);
+	float secondCos = cos(pushConstants.cameraVertical.w);
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		w.xyz = abs(w.xyz);
+		w.xyz *= pushConstants.juliaC.w;
+		w.w *= abs(pushConstants.juliaC.w);
+		w.xyz += pushConstants.juliaC.xyz;
+		w.yz = vec2(firstCos * w.y + firstSin * w.z, firstCos * w.z - firstSin * w.y);
+		w.zx = vec2(secondCos * w.z + secondSin * w.x, secondCos * w.x - secondSin * w.z);
+		
+		if (dot(w.xyz, w.xyz) > 100000.0) break;
+	}
+	return (length(w.xyz) - 1.0) / w.w;
 }
 
 float trace(vec3 from, vec3 direction)
@@ -237,6 +282,10 @@ float trace(vec3 from, vec3 direction)
 			case 4:	distance = DE_juliaCube(p);
 							break;
 			case 5:	distance = DE_mandelbox(p);
+							break;
+			case 6:	distance = DE_juliabox(p);
+							break;
+			case 7:	distance = DE_butterweedHills(p);
 							break;
 			default:	distance = 1000.0;
 							break;

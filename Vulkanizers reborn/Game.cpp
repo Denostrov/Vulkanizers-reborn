@@ -375,11 +375,27 @@ void Game::loadScene(int id)
 		juliaC = { 0.0f, 0.0f, -1.08f, 0.0f };
 		break;
 	case 5:
-		fractalData = { -1.5f, 0.0f };
+		fractalData = { 2.0f, 0.0f };
 		iterations = 25.0f;
 		juliaC = { 0.0f, 0.0f, 0.0f, 1.0f };
 		steps = 50.0f;
+		camera.position = glm::vec3(10.0f, 0.0f, 0.0f);
+		camera.point(glm::vec3(0.0f, 0.0f, 0.0f));
+		break;
+	case 6:
+		fractalData = { 2.5f, 0.0f };
+		iterations = 25.0f;
+		juliaC = { 2.0f, -2.0f, -2.0f, 1.0f };
+		steps = 50.0f;
 		camera.position = glm::vec3(15.0f, 0.0f, 0.0f);
+		camera.point(glm::vec3(0.0f, 0.0f, 0.0f));
+		break;
+	case 7:
+		fractalData = { 3.61f, 2.03f };
+		iterations = 30.0f;
+		juliaC = { -1.0f, -0.5f, -0.2f, 1.5f };
+		steps = 50.0f;
+		camera.position = glm::vec3(5.0f, 0.0f, 0.0f);
 		camera.point(glm::vec3(0.0f, 0.0f, 0.0f));
 		break;
 	default:
