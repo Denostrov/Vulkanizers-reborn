@@ -207,7 +207,9 @@ float DE_mandelbox(vec3 point)
 		
 		if (dot(w.xyz, w.xyz) > 100000.0) break;
 	}
-	return length(w.xyz)/abs(w.w);
+	vec3 boxDists = abs(w.xyz) - 6.0;
+	return (length(max(boxDists, 0.0)) + min(max(boxDists.x, max(boxDists.y, boxDists.z)), 0.0)) / w.w;
+	//return length(w.xyz)/abs(w.w);
 }
 
 float DE_juliabox(vec3 point)
@@ -217,14 +219,17 @@ float DE_juliabox(vec3 point)
 	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
 	{
 		boxFold(w);
-		w *= pushConstants.juliaC.w;
+		w.xyz *= pushConstants.juliaC.w;
+		w.w *= abs(pushConstants.juliaC.w);
 		ballFold(pushConstants.cameraVertical.w * pushConstants.cameraVertical.w, w);
 		w.xyz = pushConstants.data.w * w.xyz + pushConstants.juliaC.xyz;
-		w.w = w.w * abs(pushConstants.data.w) + 1.0;
+		w.w = w.w * abs(pushConstants.data.w);
 		
 		if (dot(w.xyz, w.xyz) > 100000.0) break;
 	}
-	return length(w.xyz)/abs(w.w);
+	vec3 boxDists = abs(w.xyz) - 6.0;
+	return (length(max(boxDists, 0.0)) + min(max(boxDists.x, max(boxDists.y, boxDists.z)), 0.0)) / w.w;
+	//return length(w.xyz)/abs(w.w);
 }
 
 float DE_butterweedHills(vec3 point)
