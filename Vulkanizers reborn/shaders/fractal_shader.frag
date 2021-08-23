@@ -193,6 +193,18 @@ void absFold(vec3 c, inout vec4 point)
 	point.xyz = abs(point.xyz - c) + c;
 }
 
+void mengerFold(inout vec4 point)
+{
+	if (point.x < point.y) point.xy = point.yx;
+	if (point.x < point.z) point.xz = point.zx;
+	if (point.y < point.z) point.zy = point.yz;
+}
+
+void planeFold(inout vec4 point, vec3 n, float d)
+{
+	point.xyz -= 2.0 * min(0.0, dot(point.xyz, n) - d) * n;
+}
+
 float DE_mandelbox(vec3 point)
 {
 	int iterations;
@@ -254,6 +266,26 @@ float DE_butterweedHills(vec3 point)
 	return (length(w.xyz) - 1.0) / w.w;
 }
 
+float DE_menger(vec3 point)
+{
+	int iterations;
+	vec4 w = vec4(point, 1.0);
+	w /= 100.0;
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		w.xyz = abs(w.xyz);
+		mengerFold(w);
+		w.xyz *= pushConstants.juliaC.w;
+		w.w *= abs(pushConstants.juliaC.w);
+		w.xyz += pushConstants.juliaC.xyz;
+		w.z = -abs(w.z + pushConstants.data.w) - pushConstants.data.w;
+		
+		if (dot(w.xyz, w.xyz) > 100000.0) break;
+	}
+	vec3 boxDists = abs(w.xyz) - 2.0;
+	return (length(max(boxDists, 0.0)) + min(max(boxDists.x, max(boxDists.y, boxDists.z)), 0.0)) / w.w;
+}
+
 float trace(vec3 from, vec3 direction)
 {
 	float totalDistance = 0.0;
@@ -291,6 +323,8 @@ float trace(vec3 from, vec3 direction)
 			case 6:	distance = DE_juliabox(p);
 							break;
 			case 7:	distance = DE_butterweedHills(p);
+							break;
+			case 8:	distance = DE_menger(p);
 							break;
 			default:	distance = 1000.0;
 							break;
