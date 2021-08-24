@@ -5,12 +5,12 @@ layout(location = 0) out vec4 outColor;
 
 layout( push_constant ) uniform constants
 {
-	vec4 data; //viewport width, viewport height, steps, {sphere size, polynomial degree, julia power, s, rot1}
+	vec4 data; //viewport width, viewport height, steps, {sphere size, polynomial degree, julia power, s, rot1, planeDist, boxFold}
 	vec4 cameraPos; //4th argument is focal length
 	vec4 cameraHorizontal; //4th argument is scene id
-	vec4 cameraVertical; //4th argument is { _ , _, k projection, r, rot2}
+	vec4 cameraVertical; //4th argument is { _ , _, k projection, r, rot2, _, rot}
 	vec4 cameraDirection; //4th argument is iterations
-	vec4 juliaC;	// {f, translate_scale}
+	vec4 juliaC;	// {f, translate_scale, translate_scale}
 } pushConstants;
 
 const float rayPrecision = 0.0001;
@@ -175,9 +175,9 @@ float DE_juliaCube(vec3 point)
 	return 0.25 * log(m2)*sqrt(m2/dz2);
 }
 
-void boxFold(inout vec4 point)
+void boxFold(float r, inout vec4 point)
 {
-	point.xyz = clamp(point.xyz, -1.0, 1.0)*2.0 - point.xyz;
+	point.xyz = clamp(point.xyz, -r, r)*2.0 - point.xyz;
 }
 
 void ballFold(float r2, inout vec4 point)
@@ -211,7 +211,7 @@ float DE_mandelbox(vec3 point)
 	vec4 w = vec4(point, 1.0);
 	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
 	{
-		boxFold(w);
+		boxFold(1.0, w);
 		w *= pushConstants.juliaC.w;
 		ballFold(pushConstants.cameraVertical.w * pushConstants.cameraVertical.w, w);
 		w.xyz = pushConstants.data.w * w.xyz + point;
@@ -230,7 +230,7 @@ float DE_juliabox(vec3 point)
 	vec4 w = vec4(point, 1.0);
 	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
 	{
-		boxFold(w);
+		boxFold(1.0, w);
 		w.xyz *= pushConstants.juliaC.w;
 		w.w *= abs(pushConstants.juliaC.w);
 		ballFold(pushConstants.cameraVertical.w * pushConstants.cameraVertical.w, w);
@@ -286,6 +286,27 @@ float DE_menger(vec3 point)
 	return (length(max(boxDists, 0.0)) + min(max(boxDists.x, max(boxDists.y, boxDists.z)), 0.0)) / w.w;
 }
 
+float DE_mausoleum(vec3 point)
+{
+	int iterations;
+	vec4 w = vec4(point, 1.0);
+	float firstSin = sin(pushConstants.cameraVertical.w);
+	float firstCos = cos(pushConstants.cameraVertical.w);
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		boxFold(pushConstants.data.w, w);
+		mengerFold(w);
+		w.xyz *= pushConstants.juliaC.w;
+		w.w *= abs(pushConstants.juliaC.w);
+		w.xyz += pushConstants.juliaC.xyz;
+		w.yz = vec2(firstCos * w.y + firstSin * w.z, firstCos * w.z - firstSin * w.y);
+		
+		if (dot(w.xyz, w.xyz) > 100000.0) break;
+	}
+	vec3 boxDists = abs(w.xyz) - 2.0;
+	return (length(max(boxDists, 0.0)) + min(max(boxDists.x, max(boxDists.y, boxDists.z)), 0.0)) / w.w;
+}
+
 float trace(vec3 from, vec3 direction)
 {
 	float totalDistance = 0.0;
@@ -325,6 +346,8 @@ float trace(vec3 from, vec3 direction)
 			case 7:	distance = DE_butterweedHills(p);
 							break;
 			case 8:	distance = DE_menger(p);
+							break;
+			case 9:	distance = DE_mausoleum(p);
 							break;
 			default:	distance = 1000.0;
 							break;
