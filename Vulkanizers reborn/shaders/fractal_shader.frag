@@ -5,12 +5,12 @@ layout(location = 0) out vec4 outColor;
 
 layout( push_constant ) uniform constants
 {
-	vec4 data; //viewport width, viewport height, steps, {sphere size, polynomial degree, julia power, s, rot1, planeDist, boxFold}
+	vec4 data; //viewport width, viewport height, steps, {sphere size, polynomial degree, julia power, s, rot1, planeDist, boxFold, planeDist}
 	vec4 cameraPos; //4th argument is focal length
 	vec4 cameraHorizontal; //4th argument is scene id
-	vec4 cameraVertical; //4th argument is { _ , _, k projection, r, rot2, _, rot}
+	vec4 cameraVertical; //4th argument is { _ , _, k projection, r, rot2, _, rot, rot}
 	vec4 cameraDirection; //4th argument is iterations
-	vec4 juliaC;	// {f, translate_scale, translate_scale}
+	vec4 juliaC;	// {f, translate_scale, translate_scale, translate_scale}
 } pushConstants;
 
 const float rayPrecision = 0.0001;
@@ -200,6 +200,13 @@ void mengerFold(inout vec4 point)
 	if (point.y < point.z) point.zy = point.yz;
 }
 
+void sierpinskiFold(inout vec4 point)
+{
+	if (point.x + point.y < 0.0) point.xy = -point.yx;
+	if (point.x + point.z < 0.0) point.xz = -point.zx;
+	if (point.y + point.z < 0.0) point.zy = -point.yz;
+}
+
 void planeFold(inout vec4 point, vec3 n, float d)
 {
 	point.xyz -= 2.0 * min(0.0, dot(point.xyz, n) - d) * n;
@@ -307,6 +314,45 @@ float DE_mausoleum(vec3 point)
 	return (length(max(boxDists, 0.0)) + min(max(boxDists.x, max(boxDists.y, boxDists.z)), 0.0)) / w.w;
 }
 
+float DE_treePlanet(vec3 point)
+{
+	int iterations;
+	vec4 w = vec4(point, 1.0);
+	float firstSin = sin(pushConstants.cameraVertical.w);
+	float firstCos = cos(pushConstants.cameraVertical.w);
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		w.zx = vec2(firstCos * w.z + firstSin * w.x, firstCos * w.x - firstSin * w.z);
+		w.xyz = abs(w.xyz);
+		mengerFold(w);
+		w.xyz *= pushConstants.juliaC.w;
+		w.w *= abs(pushConstants.juliaC.w);
+		w.xyz += pushConstants.juliaC.xyz;
+		w.z = -abs(w.z + pushConstants.data.w) - pushConstants.data.w;
+		
+		if (dot(w.xyz, w.xyz) > 100000.0) break;
+	}
+	vec3 boxDists = abs(w.xyz) - 4.8;
+	return (length(max(boxDists, 0.0)) + min(max(boxDists.x, max(boxDists.y, boxDists.z)), 0.0)) / w.w;
+}
+
+float DE_sierpinskiTetrahedron(vec3 point)
+{
+	int iterations;
+	vec4 w = vec4(point, 1.0);
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		sierpinskiFold(w);
+		w.xyz *= pushConstants.juliaC.w;
+		w.w *= abs(pushConstants.juliaC.w);
+		w.xyz += pushConstants.juliaC.xyz;
+		
+		if (dot(w.xyz, w.xyz) > 100000.0) break;
+	}
+	float md = max(-w.x - w.y - w.z, max(w.x + w.y - w.z, max(-w.x + w.y + w.z, w.x - w.y + w.z)));
+	return (md - 1.0) / (w.w * sqrt(3.0));
+}
+
 float trace(vec3 from, vec3 direction)
 {
 	float totalDistance = 0.0;
@@ -349,7 +395,11 @@ float trace(vec3 from, vec3 direction)
 							break;
 			case 9:	distance = DE_mausoleum(p);
 							break;
-			default:	distance = 1000.0;
+			case 10:distance = DE_treePlanet(p);
+							break;
+			case 11:distance = DE_sierpinskiTetrahedron(p);
+							break;
+			default:distance = 1000.0;
 							break;
 		}
 		totalDistance += distance;
