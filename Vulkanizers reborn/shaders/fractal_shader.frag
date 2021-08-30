@@ -353,6 +353,55 @@ float DE_sierpinskiTetrahedron(vec3 point)
 	return (md - 1.0) / (w.w * sqrt(3.0));
 }
 
+float DE_snowStadium(vec3 point)
+{
+	int iterations;
+	vec4 w = vec4(point, 1.0);
+	float firstSin = sin(pushConstants.data.w);
+	float firstCos = cos(pushConstants.data.w);
+	float secondSin = sin(pushConstants.cameraVertical.w);
+	float secondCos = cos(pushConstants.cameraVertical.w);
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		w.zx = vec2(firstCos * w.z + firstSin * w.x, firstCos * w.x - firstSin * w.z);
+		sierpinskiFold(w);
+		w.yz = vec2(secondCos * w.y + secondSin * w.z, secondCos * w.z - secondSin * w.y);
+		mengerFold(w);
+		w.xyz *= pushConstants.juliaC.w;
+		w.w *= abs(pushConstants.juliaC.w);
+		w.xyz += pushConstants.juliaC.xyz;
+		
+		if (dot(w.xyz, w.xyz) > 100000.0) break;
+	}
+	vec3 boxDists = abs(w.xyz) - 4.8;
+	return (length(max(boxDists, 0.0)) + min(max(boxDists.x, max(boxDists.y, boxDists.z)), 0.0)) / w.w;
+}
+
+float DE_cum(vec3 point)
+{
+	int iterations;
+	vec4 w = vec4(point, 1.0);
+	float firstSin = sin(pushConstants.data.w);
+	float firstCos = cos(pushConstants.data.w);
+	float secondSin = sin(pushConstants.cameraVertical.w);
+	float secondCos = cos(pushConstants.cameraVertical.w);
+	for (iterations = 0; iterations <= int(pushConstants.cameraDirection.w); iterations++)
+	{
+		sierpinskiFold(w);
+		mengerFold(w);
+		w.zx = vec2(firstCos * w.z + firstSin * w.x, firstCos * w.x - firstSin * w.z);
+		w.xyz = abs(w.xyz);
+		w.xy = vec2(secondCos * w.x + secondSin * w.y, secondCos * w.y - secondSin * w.x);
+		w.xyz *= pushConstants.juliaC.w;
+		w.w *= abs(pushConstants.juliaC.w);
+		w.xyz += pushConstants.juliaC.xyz;
+		
+		if (dot(w.xyz, w.xyz) > 100000.0) break;
+	}
+	vec3 boxDists = abs(w.xyz) - 6.0;
+	return (length(max(boxDists, 0.0)) + min(max(boxDists.x, max(boxDists.y, boxDists.z)), 0.0)) / w.w;
+}
+
 float trace(vec3 from, vec3 direction)
 {
 	float totalDistance = 0.0;
@@ -398,6 +447,10 @@ float trace(vec3 from, vec3 direction)
 			case 10:distance = DE_treePlanet(p);
 							break;
 			case 11:distance = DE_sierpinskiTetrahedron(p);
+							break;
+			case 12:distance = DE_snowStadium(p);
+							break;
+			case 13:distance = DE_cum(p);
 							break;
 			default:distance = 1000.0;
 							break;

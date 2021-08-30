@@ -5,7 +5,7 @@ Game::Game()
 	:lastFrameTime{ 0 }, deltaTime{ 0 }, fpsFramesRendered{ 0 }, fpsTimePassed{ 0.0f },
 	updateTime{ 0.0f }, gameOver{ false }, soundEngine{ std::make_unique<SoundEngine>() }, vulkan{ std::make_unique<VulkanResources>(this) },
 	cursor{ vulkan.get(), Settings::CURSOR_SIZE }, random{}, gen{ random() }, camera{ glm::vec3(2.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), 1.0f }, steps{ 100.0f }, fractalData{ 0.15f, 0.0f },
-	iterations{ 1.0f }, sceneID{ 11 }, juliaC{ 0.0f, 0.0f, 0.0f, 0.0f }, cursorEnabled{ true }, mWheelMovement{ 0.0 }
+	iterations{ 1.0f }, sceneID{ 13 }, juliaC{ 0.0f, 0.0f, 0.0f, 0.0f }, cursorEnabled{ true }, mWheelMovement{ 0.0 }
 {
 
 	//get window pointer from vulkan
@@ -426,6 +426,22 @@ void Game::loadScene(int id)
 		fractalData = { 0.0f, 0.0f };
 		iterations = 11.0f;
 		juliaC = { -1.0f, -1.0f, -1.0f, 2.0f };
+		steps = 50.0f;
+		camera.position = glm::vec3(5.0f, 0.0f, 0.0f);
+		camera.point(glm::vec3(0.0f, 0.0f, 0.0f));
+		break;
+	case 12:
+		fractalData = { -2.95318f, 0.15f };
+		iterations = 30.0f;
+		juliaC = { -6.61f, -4.0f, -2.42f, 1.57f };
+		steps = 50.0f;
+		camera.position = glm::vec3(15.0f, 0.0f, 0.0f);
+		camera.point(glm::vec3(0.0f, 0.0f, 0.0f));
+		break;
+	case 13:
+		fractalData = { -1.570796f, 1.815f };
+		iterations = 20.0f;
+		juliaC = { -7.1f, 0.396f, -6.29f, 1.89f };
 		steps = 50.0f;
 		camera.position = glm::vec3(5.0f, 0.0f, 0.0f);
 		camera.point(glm::vec3(0.0f, 0.0f, 0.0f));
